@@ -25,20 +25,50 @@ const createBank = async (req, res) => {
   }
 };
 
-// Get all Question Banks for current user
+// Get all Question Banks for current user (with full question rows)
 const getBanks = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { data, error } = await supabase
+    // Fetch banks for this user
+    const { data: banks, error: banksError } = await supabase
       .from('question_banks')
-      .select('*, questions(count)')
+      .select('*')
       .eq('created_by', userId)
       .order('created_at', { ascending: false });
 
-    if (error) return errorResponse(res, 400, error.message);
+    if (banksError) return errorResponse(res, 400, banksError.message);
 
-    return successResponse(res, 200, 'Question banks retrieved successfully', data);
+    if (!banks || banks.length === 0) {
+      return successResponse(res, 200, 'Question banks retrieved successfully', []);
+    }
+
+    // Fetch only the original (pure bank) questions — where survey_id IS NULL
+    // NOTE: PostgREST does not support .is() filters on columns in related tables
+    // in a joined select, so we fetch questions separately and merge.
+    const bankIds = banks.map((b) => b.id);
+
+    const { data: questions, error: questionsError } = await supabase
+      .from('questions')
+      .select('*')
+      .in('bank_id', bankIds)
+      .is('survey_id', null);
+
+    if (questionsError) return errorResponse(res, 400, questionsError.message);
+
+    // Group questions by bank_id and attach to each bank
+    const questionsByBank = {};
+    (questions || []).forEach((q) => {
+      if (!questionsByBank[q.bank_id]) questionsByBank[q.bank_id] = [];
+      questionsByBank[q.bank_id].push(q);
+    });
+
+    const banksWithQuestions = banks.map((bank) => ({
+      ...bank,
+      questions: questionsByBank[bank.id] || []
+    }));
+
+    return successResponse(res, 200, 'Question banks retrieved successfully', banksWithQuestions);
   } catch (err) {
     return errorResponse(res, 500, 'Failed to fetch question banks', err.message);
   }
