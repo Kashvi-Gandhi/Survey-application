@@ -72,45 +72,59 @@ const parseSqlJson = (result) => {
 // Create a new Question Bank via Stored Procedure
 const createBank = async (req, res) => {
   try {
-    const { title, description } = req.body;
-    const userId = req.user?.id;
+    const { name, title, bank_name, description } = req.body;
+    const finalName = name || bank_name || title;
+    const userId = req.user?.id || req.user?.user_id || null;
 
-    if (!title) {
-      return errorResponse(res, 400, 'Question bank title is required');
+    if (!finalName) {
+      return res.status(400).json({ success: false, message: 'Bank name is required' });
     }
 
     const pool = await poolPromise;
     const result = await pool.request()
-      .input('p_title', sql.NVarChar(255), title)
-      .input('p_description', sql.NVarChar(sql.MAX), description || null)
-      .input('p_created_by', sql.UniqueIdentifier, userId || null)
+      .input('name', sql.NVarChar(255), finalName)
+      .input('description', sql.NVarChar(sql.MAX), description || '')
+      .input('created_by', sql.NVarChar(100), userId)
       .execute('usp_createquestionbank');
 
-    const data = parseSqlJson(result);
-    return successResponse(res, 201, 'Question bank created successfully', data);
+    return res.status(201).json({
+      success: true,
+      message: 'Question bank created successfully',
+      data: result.recordset[0]
+    });
 
   } catch (err) {
     console.error('❌ Controller Exception (createBank):', err);
-    return errorResponse(res, 500, 'Failed to create question bank', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create question bank',
+      error: err.message
+    });
   }
 };
 
 // Get all Question Banks for current user
 const getBanks = async (req, res) => {
   try {
-    const userId = req.user?.id;
-
     const pool = await poolPromise;
+    const userId = req.user?.id || req.user?.user_id || null;
+
     const result = await pool.request()
-      .input('p_user_id', sql.UniqueIdentifier, userId)
+      .input('user_id', sql.NVarChar(100), userId)
       .execute('usp_getuserquestionbanks');
 
-    const data = parseSqlJson(result) || [];
-    return successResponse(res, 200, 'Question banks retrieved successfully', data);
+    return res.status(200).json({
+      success: true,
+      data: result.recordset
+    });
 
   } catch (err) {
     console.error('❌ Controller Exception (getBanks):', err);
-    return errorResponse(res, 500, 'Failed to fetch question banks', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch question banks',
+      error: err.message
+    });
   }
 };
 

@@ -8,7 +8,7 @@ export default function Register() {
     fullName: '',
     email: '',
     password: '',
-    role: 'taker'
+    role: 'surveyor' // 🚨 FIX 1: Set default role to 'surveyor'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,7 +24,6 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
-    // Frontend validation check
     const isStudentRole = formData.role === 'taker';
     
     if (!formData.fullName.trim() || !formData.email.trim()) {
@@ -40,15 +39,14 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // Pass the state values to the backend endpoint
       const registrationData = {
         fullName: formData.fullName,
         email: formData.email,
         role: formData.role
       };
 
-      // Only include password for non-student roles
-      if (!isStudentRole) {
+      // Always include password if present
+      if (formData.password) {
         registrationData.password = formData.password;
       }
 
@@ -94,7 +92,7 @@ export default function Register() {
               className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
             >
               <option value="surveyor">Instructor / Surveyor</option>
-              {/* <option value="taker">Student / Survey Taker</option> */}
+              <option value="taker">Student / Survey Taker</option>
             </select>
           </div>
         </div>
@@ -135,6 +133,7 @@ export default function Register() {
           </div>
         </div>
 
+        {/* 🚨 FIX 2: Password input renders now because role is initialized to 'surveyor' */}
         {!isStudentRole && (
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
@@ -154,14 +153,6 @@ export default function Register() {
             </div>
           </div>
         )}
-
-        {/* {isStudentRole && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-xs text-blue-700">
-              <strong>Student Account:</strong> No password required. You'll receive access via survey links.
-            </p>
-          </div>
-        )} */}
 
         <button
           type="submit"

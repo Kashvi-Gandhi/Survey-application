@@ -7,9 +7,10 @@ export const loginUser = async (email, password) => {
 
 export const registerUser = async (userData) => {
   const registrationPayload = {
-    full_name: userData.fullName || userData.full_name, // Handles both
+    full_name: userData.fullName || userData.full_name,
     email: userData.email,
-    role: userData.role
+    password: userData.password, // Always include password
+    role: userData.role || 'surveyor'
   };
 
   // Only include password for non-student roles

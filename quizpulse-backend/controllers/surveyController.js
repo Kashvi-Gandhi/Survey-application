@@ -222,23 +222,26 @@ const debugResponses = async (req, res) => {
 // Get all surveys for current user
 const getSurveys = async (req, res) => {
   try {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return errorResponse(res, 401, 'User authentication required');
-    }
-
     const pool = await poolPromise;
+    const userId = req.user?.id || req.user?.user_id || null;
+
+    // Use 'user_id' instead of 'p_user_id'
     const result = await pool.request()
-      .input('p_user_id', sql.UniqueIdentifier, userId)
+      .input('user_id', sql.NVarChar(100), userId) 
       .execute('usp_getusersurveys');
 
-    const data = parseSqlJson(result) || [];
-    return successResponse(res, 200, 'Surveys retrieved successfully', data);
+    return res.status(200).json({
+      success: true,
+      data: result.recordset
+    });
 
   } catch (err) {
     console.error('❌ Exception in getSurveys:', err);
-    return errorResponse(res, 500, 'Failed to fetch surveys', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch surveys',
+      error: err.message
+    });
   }
 };
 
