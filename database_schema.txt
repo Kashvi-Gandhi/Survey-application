@@ -202,3 +202,176 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.role_master (
+  id integer NOT NULL DEFAULT nextval('role_master_id_seq'::regclass),
+  role_name USER-DEFINED NOT NULL UNIQUE,
+  description text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT role_master_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  email character varying NOT NULL UNIQUE,
+  full_name character varying NOT NULL,
+  role_id integer NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
+  CONSTRAINT profiles_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.role_master(id)
+);
+CREATE TABLE public.question_banks (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  title character varying NOT NULL,
+  description text,
+  created_by uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT question_banks_pkey PRIMARY KEY (id),
+  CONSTRAINT question_banks_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.surveys (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  title character varying NOT NULL,
+  description text,
+  time_limit_minutes integer DEFAULT 0,
+  is_published boolean NOT NULL DEFAULT false,
+  expires_at timestamp with time zone,
+  created_by uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT surveys_pkey PRIMARY KEY (id),
+  CONSTRAINT surveys_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.questions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  bank_id uuid,
+  survey_id uuid,
+  question_text text NOT NULL,
+  question_type USER-DEFINED NOT NULL,
+  order_index integer NOT NULL DEFAULT 1,
+  points integer NOT NULL DEFAULT 1,
+  is_required boolean NOT NULL DEFAULT true,
+  options jsonb,
+  correct_answer jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT questions_pkey PRIMARY KEY (id),
+  CONSTRAINT questions_bank_id_fkey FOREIGN KEY (bank_id) REFERENCES public.question_banks(id),
+  CONSTRAINT questions_survey_id_fkey FOREIGN KEY (survey_id) REFERENCES public.surveys(id)
+);
+CREATE TABLE public.responses (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  survey_id uuid NOT NULL,
+  question_id uuid NOT NULL,
+  respondent_id uuid,
+  user_answer jsonb NOT NULL,
+  is_correct boolean,
+  score_earned integer NOT NULL DEFAULT 0,
+  submitted_at timestamp with time zone NOT NULL DEFAULT now(),
+  taker_name character varying,
+  taker_email character varying,
+  CONSTRAINT responses_pkey PRIMARY KEY (id),
+  CONSTRAINT responses_survey_id_fkey FOREIGN KEY (survey_id) REFERENCES public.surveys(id),
+  CONSTRAINT responses_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id),
+  CONSTRAINT responses_respondent_id_fkey FOREIGN KEY (respondent_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.survey_responses (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  survey_id uuid,
+  user_id uuid,
+  status character varying DEFAULT 'completed'::character varying,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT survey_responses_pkey PRIMARY KEY (id),
+  CONSTRAINT survey_responses_survey_id_fkey FOREIGN KEY (survey_id) REFERENCES public.surveys(id)
+);
+CREATE TABLE public.response_details (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  response_id uuid,
+  question_id uuid,
+  response_text text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT response_details_pkey PRIMARY KEY (id),
+  CONSTRAINT response_details_response_id_fkey FOREIGN KEY (response_id) REFERENCES public.survey_responses(id),
+  CONSTRAINT response_details_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id)
+);
