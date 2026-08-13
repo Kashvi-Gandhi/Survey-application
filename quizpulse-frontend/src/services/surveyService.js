@@ -15,12 +15,30 @@ export const importBankToSurvey = async (surveyId, bankId) => {
   return response.data;
 };
 
+// Import Selected Questions into Survey
+export const importSelectedQuestions = async (surveyId, bankId, questionIds) => {
+  const response = await API.post('/surveys/import-selected', {
+    survey_id: surveyId,
+    bank_id: bankId,
+    question_ids: questionIds
+  });
+  return response.data;
+};
+
 // Submit Survey Responses (Public endpoint - triggers stored procedure)
-export const submitSurveyResponse = async (surveyId, answers) => {
-  const response = await API.post('/surveys/submit', {
+export const submitSurveyResponse = async (surveyId, answers, takerName = null, takerEmail = null) => {
+  const payload = {
     survey_id: surveyId,
     answers
-  });
+  };
+
+  // Include taker info for anonymous submissions
+  if (takerName && takerEmail) {
+    payload.taker_name = takerName;
+    payload.taker_email = takerEmail;
+  }
+
+  const response = await API.post('/surveys/submit', payload);
   return response.data;
 };
 
@@ -33,6 +51,7 @@ export const getSurveyAnalytics = async (surveyId) => {
 export default {
   createSurvey,
   importBankToSurvey,
+  importSelectedQuestions,
   submitSurveyResponse,
   getSurveyAnalytics
 };

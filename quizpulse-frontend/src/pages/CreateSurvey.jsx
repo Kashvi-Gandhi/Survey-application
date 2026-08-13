@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getQuestionBanks } from '../services/bankService';
-import { createSurvey, importBankToSurvey } from '../services/surveyService';
+import { createSurvey, importSelectedQuestions } from '../services/surveyService';
 import { PlusCircle, Database, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function CreateSurvey() {
@@ -9,6 +9,7 @@ export default function CreateSurvey() {
   const [description, setDescription] = useState('');
   const [banks, setBanks] = useState([]);
   const [selectedBankId, setSelectedBankId] = useState('');
+  const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,10 +37,29 @@ export default function CreateSurvey() {
     return 0;
   };
 
+  const getCurrentBank = () => banks.find(b => b.id === selectedBankId);
+  const getCurrentQuestions = () => {
+    const bank = getCurrentBank();
+    return bank?.questions || bank?.question_list || [];
+  };
+
+  const handleQuestionToggle = (questionId) => {
+    setSelectedQuestions(prev => 
+      prev.includes(questionId) 
+        ? prev.filter(id => id !== questionId)
+        : [...prev, questionId]
+    );
+  };
+
+  const handleBankChange = (bankId) => {
+    setSelectedBankId(bankId);
+    setSelectedQuestions([]);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !selectedBankId) {
-      setError('Please provide a survey title and select a valid question bank.');
+    if (!title.trim() || !selectedBankId || selectedQuestions.length === 0) {
+      setError('Please provide a survey title, select a question bank, and choose at least one question.');
       return;
     }
 
@@ -47,17 +67,17 @@ export default function CreateSurvey() {
     setError('');
 
     try {
-      // 1. Create survey shell via Stored Procedure endpoint
+      // 1. Create survey shell
       const surveyRes = await createSurvey({ title, description });
       const surveyId = surveyRes.data?.id;
 
-      // 2. Import questions from selected bank via Stored Procedure endpoint
-      await importBankToSurvey(surveyId, selectedBankId);
+      // 2. Import selected questions
+      await importSelectedQuestions(surveyId, selectedBankId, selectedQuestions);
 
       // Redirect to Dashboard
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to publish assessment survey. Ensure the bank contains questions.');
+      setError(err.response?.data?.message || 'Failed to publish assessment survey.');
     } finally {
       setLoading(false);
     }
@@ -119,7 +139,7 @@ export default function CreateSurvey() {
             <select
               required
               value={selectedBankId}
-              onChange={(e) => setSelectedBankId(e.target.value)}
+              onChange={(e) => handleBankChange(e.target.value)}
               className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
             >
               {banks.length === 0 ? (
@@ -135,6 +155,30 @@ export default function CreateSurvey() {
           </div>
         </div>
 
+        {selectedBankId && getCurrentQuestions().length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              Select Questions ({selectedQuestions.length} selected)
+            </label>
+            <div className="max-h-60 overflow-y-auto border border-slate-300 rounded-md bg-slate-50">
+              {getCurrentQuestions().map((question, idx) => (
+                <label key={question.id} className="flex items-start gap-3 p-3 border-b border-slate-200 last:border-b-0 hover:bg-white cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedQuestions.includes(question.id)}
+                    onChange={() => handleQuestionToggle(question.id)}
+                    className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div className="flex-1">
+                    <span className="text-xs font-medium text-slate-600">Q{idx + 1}:</span>
+                    <p className="text-sm text-slate-800">{question.question_text}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="pt-3 border-t border-slate-100 flex justify-end gap-3">
           <button
             type="button"
@@ -145,7 +189,7 @@ export default function CreateSurvey() {
           </button>
           <button
             type="submit"
-            disabled={loading || banks.length === 0}
+            disabled={loading || banks.length === 0 || selectedQuestions.length === 0}
             className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-md shadow transition-colors disabled:opacity-50"
           >
             <CheckCircle2 className="w-4 h-4" />

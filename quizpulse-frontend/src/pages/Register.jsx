@@ -8,7 +8,7 @@ export default function Register() {
     fullName: '',
     email: '',
     password: '',
-    role: 'surveyor'
+    role: 'taker'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,8 +25,15 @@ export default function Register() {
     setError('');
 
     // Frontend validation check
-    if (!formData.fullName.trim() || !formData.email.trim() || !formData.password.trim()) {
-      setError('Email, password, and full name are required');
+    const isStudentRole = formData.role === 'taker';
+    
+    if (!formData.fullName.trim() || !formData.email.trim()) {
+      setError('Full name and email are required');
+      return;
+    }
+
+    if (!isStudentRole && !formData.password.trim()) {
+      setError('Password is required for instructor accounts');
       return;
     }
 
@@ -34,12 +41,18 @@ export default function Register() {
 
     try {
       // Pass the state values to the backend endpoint
-      await register({
+      const registrationData = {
         fullName: formData.fullName,
         email: formData.email,
-        password: formData.password,
         role: formData.role
-      });
+      };
+
+      // Only include password for non-student roles
+      if (!isStudentRole) {
+        registrationData.password = formData.password;
+      }
+
+      await register(registrationData);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
@@ -47,6 +60,8 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  const isStudentRole = formData.role === 'taker';
 
   return (
     <div className="max-w-md mx-auto my-8 bg-white p-8 rounded-xl border border-slate-200 shadow-md space-y-6">
@@ -66,6 +81,24 @@ export default function Register() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            Account Role
+          </label>
+          <div className="relative">
+            <ShieldCheck className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+            >
+              <option value="surveyor">Instructor / Surveyor</option>
+              {/* <option value="taker">Student / Survey Taker</option> */}
+            </select>
+          </div>
+        </div>
+
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
             Full Name
@@ -102,41 +135,33 @@ export default function Register() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Password
-          </label>
-          <div className="relative">
-            <Lock className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-            <input
-              type="password"
-              name="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
+        {!isStudentRole && (
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="password"
+                name="password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Account Role
-          </label>
-          <div className="relative">
-            <ShieldCheck className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-            >
-              <option value="surveyor">Surveyor / Instructor</option>
-              <option value="taker">Survey Taker</option>
-            </select>
+        {/* {isStudentRole && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-xs text-blue-700">
+              <strong>Student Account:</strong> No password required. You'll receive access via survey links.
+            </p>
           </div>
-        </div>
+        )} */}
 
         <button
           type="submit"
