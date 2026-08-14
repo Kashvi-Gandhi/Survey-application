@@ -39,6 +39,16 @@ export const deleteQuestion = async (questionId) => {
   return response.data;
 };
 
+export const updateSurvey = async (surveyId, surveyData) => {
+  const response = await API.put(`/surveys/${surveyId}`, surveyData);
+  return response.data;
+};
+
+export const deleteSurvey = async (surveyId) => {
+  const response = await API.delete(`/surveys/${surveyId}`);
+  return response.data;
+};
+
 // Submit Survey Responses (Public endpoint - triggers stored procedure)
 export const submitSurveyResponse = async (surveyId, answers, takerName = null, takerEmail = null) => {
   const payload = {
@@ -68,6 +78,8 @@ export default {
   importSelectedQuestions,
   createQuestionsBatch,
   deleteQuestion,
+  updateSurvey,
+  deleteSurvey,
   submitSurveyResponse,
   getSurveyAnalytics
 };

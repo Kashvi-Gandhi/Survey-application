@@ -65,12 +65,11 @@ export default function QuestionBanks() {
   const handleSaveAllQuestions = async () => {
     if (!selectedBank || draftQuestions.length === 0) return;
 
-    const typeMap = { mcq: 'single_select', rating: 'rating', text: 'one_line' };
     try {
       setSavingDrafts(true);
       await createQuestionsBatch(null, draftQuestions.map(({ client_id, type, ...question }) => ({
         ...question,
-        question_type: typeMap[type] || type
+        question_type: type
       })));
       setDraftQuestions([]);
       await fetchBanks(selectedBank.id);

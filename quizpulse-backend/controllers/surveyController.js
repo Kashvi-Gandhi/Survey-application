@@ -230,9 +230,17 @@ const getSurveys = async (req, res) => {
       .input('user_id', sql.NVarChar(100), userId)
       .execute('quiz.usp_getusersurveys');
 
+    const responseCounts = await pool.request()
+      .query('SELECT survey_id, COUNT(*) AS response_count FROM quiz.responses GROUP BY survey_id');
+    const countsBySurveyId = new Map(responseCounts.recordset.map((row) => [String(row.survey_id), Number(row.response_count)]));
+    const surveys = result.recordset.map((survey) => {
+      const responseCount = countsBySurveyId.get(String(survey.id)) || 0;
+      return { ...survey, response_count: responseCount, has_responses: responseCount > 0 };
+    });
+
     return res.status(200).json({
       success: true,
-      data: result.recordset
+      data: surveys
     });
 
   } catch (err) {
@@ -275,6 +283,12 @@ const getSurveyById = async (req, res) => {
       surveyData.questions = surveyData.questions || [];
     }
 
+    const responseCountResult = await pool.request()
+      .input('p_survey_id', sql.UniqueIdentifier, id)
+      .query('SELECT COUNT(*) AS response_count FROM quiz.responses WHERE survey_id = @p_survey_id');
+    surveyData.response_count = Number(responseCountResult.recordset[0]?.response_count || 0);
+    surveyData.has_responses = surveyData.response_count > 0;
+
     return res.status(200).json({
       success: true,
       data: surveyData
@@ -287,6 +301,55 @@ const getSurveyById = async (req, res) => {
       message: 'Failed to fetch survey',
       error: err.message
     });
+  }
+};
+
+const updateSurvey = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description } = req.body;
+    if (!title?.trim()) return errorResponse(res, 400, 'Survey title is required');
+
+    const pool = await poolPromise;
+    const responseCountResult = await pool.request()
+      .input('p_survey_id', sql.UniqueIdentifier, id)
+      .query('SELECT COUNT(*) AS response_count FROM quiz.responses WHERE survey_id = @p_survey_id');
+
+    if (Number(responseCountResult.recordset[0]?.response_count || 0) > 0) {
+      return errorResponse(res, 400, 'Cannot edit a survey that already has responses.');
+    }
+
+    const result = await pool.request()
+      .input('p_survey_id', sql.UniqueIdentifier, id)
+      .input('p_title', sql.NVarChar(255), title.trim())
+      .input('p_description', sql.NVarChar(sql.MAX), description?.trim() || null)
+      .execute('quiz.usp_update_survey');
+
+    return successResponse(res, 200, 'Survey updated successfully', result.recordset?.[0] || null);
+  } catch (err) {
+    if (err.number === 50002 || err.message?.includes('Cannot edit a survey that already has responses.')) {
+      return errorResponse(res, 400, 'Cannot edit a survey that already has responses.');
+    }
+    console.error('Exception in updateSurvey:', err);
+    return errorResponse(res, 500, 'Failed to update survey', err.message);
+  }
+};
+
+const deleteSurvey = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('p_survey_id', sql.UniqueIdentifier, req.params.id)
+      .input('p_created_by', sql.NVarChar(100), req.user?.id || req.user?.user_id || null)
+      .execute('quiz.usp_delete_survey');
+
+    return successResponse(res, 200, 'Survey deleted successfully');
+  } catch (err) {
+    if (err.number === 50004 || err.message?.includes('not found or you do not have permission')) {
+      return errorResponse(res, 403, 'You can only delete surveys you created.');
+    }
+    console.error('Exception in deleteSurvey:', err);
+    return errorResponse(res, 500, 'Failed to delete survey', err.message);
   }
 };
 
@@ -433,6 +496,8 @@ module.exports = {
   getSurveys,
   getSurveyById,
   createSurvey,
+  updateSurvey,
+  deleteSurvey,
   addQuestionsFromBank,
   importSelectedQuestions,
   submitResponse,

@@ -5,6 +5,8 @@ const {
   getSurveys,
   getSurveyById,
   createSurvey,
+  updateSurvey,
+  deleteSurvey,
   addQuestionsFromBank,
   importSelectedQuestions,
   submitResponse,
@@ -16,6 +18,8 @@ const authorizeRoles = require('../middleware/roleMiddleware');
 // Protected Routes (Surveyors / Admins)
 router.get('/', authenticateUser, authorizeRoles('surveyor', 'admin'), getSurveys);
 router.post('/', authenticateUser, authorizeRoles('surveyor', 'admin'), createSurvey);
+router.put('/:id', authenticateUser, authorizeRoles('surveyor', 'admin'), updateSurvey);
+router.delete('/:id', authenticateUser, authorizeRoles('surveyor', 'admin'), deleteSurvey);
 router.post('/import-bank', authenticateUser, authorizeRoles('surveyor', 'admin'), addQuestionsFromBank);
 router.post('/import-selected', authenticateUser, authorizeRoles('surveyor', 'admin'), importSelectedQuestions);
 router.get('/:id/analytics', authenticateUser, authorizeRoles('surveyor', 'admin'), getSurveyAnalytics);

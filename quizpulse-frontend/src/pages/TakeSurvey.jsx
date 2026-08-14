@@ -4,6 +4,32 @@ import API from '../services/api';
 import { submitSurveyResponse } from '../services/surveyService';
 import { ClipboardCheck, Star, Send, CheckCircle, User, Mail } from 'lucide-react';
 
+const getQuestionType = (question) => {
+  const type = String(question.type || question.question_type || '').trim().toLowerCase();
+  const aliases = {
+    mcq: 'mcq_single',
+    multiple_choice: 'mcq_single',
+    single_select: 'mcq_single',
+    multi_select: 'mcq_multiple',
+    one_line: 'text',
+    textarea: 'text',
+    open_ended: 'text',
+    rate: 'rating'
+  };
+  return aliases[type] || type;
+};
+
+const parseOptions = (options) => {
+  if (Array.isArray(options)) return options;
+  if (typeof options !== 'string' || !options.trim()) return [];
+  try {
+    const parsed = JSON.parse(options);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 export default function TakeSurvey() {
   const { id: surveyId } = useParams();
   const [survey, setSurvey] = useState(null);
@@ -33,6 +59,16 @@ export default function TakeSurvey() {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
+  const handleMultipleChoiceChange = (questionId, option, checked) => {
+    setAnswers((prev) => {
+      const selected = Array.isArray(prev[questionId]) ? prev[questionId] : [];
+      return {
+        ...prev,
+        [questionId]: checked ? [...selected, option] : selected.filter((value) => value !== option)
+      };
+    });
+  };
+
   const handleInfoSubmit = (e) => {
     e.preventDefault();
     if (!takerInfo.name.trim() || !takerInfo.email.trim()) {
@@ -48,10 +84,20 @@ export default function TakeSurvey() {
     setSubmitting(true);
     setError('');
 
-    // Transform answers object into payload array
+    const missingRequiredQuestion = survey?.questions?.find((question) => {
+      if (!question.is_required) return false;
+      const answer = answers[question.id];
+      return Array.isArray(answer) ? answer.length === 0 : answer === undefined || String(answer).trim() === '';
+    });
+    if (missingRequiredQuestion) {
+      setError('Please answer all required questions before submitting.');
+      setSubmitting(false);
+      return;
+    }
+
     const formattedAnswers = Object.keys(answers).map((qId) => ({
       question_id: qId,
-      response_text: String(answers[qId])
+      response_text: Array.isArray(answers[qId]) ? JSON.stringify(answers[qId]) : String(answers[qId])
     }));
 
     try {
@@ -159,21 +205,8 @@ export default function TakeSurvey() {
       {takingStep === 'survey' && (
         <form onSubmit={handleSurveySubmit} className="space-y-4">
           {survey?.questions?.map((q, idx) => {
-            const qType = (q.type || q.question_type || '').toLowerCase();
-
-            // Safely parse options array
-            let parsedOptions = [];
-            if (Array.isArray(q.options)) {
-              parsedOptions = q.options;
-            } else if (typeof q.options === 'string' && q.options.trim() !== '') {
-              try {
-                parsedOptions = JSON.parse(q.options);
-              } catch (e) {
-                parsedOptions = [];
-              }
-            }
-
-            const isMcqType = ['mcq', 'multiple_choice', 'single_select', 'choice', 'options'].includes(qType);
+            const qType = getQuestionType(q);
+            const parsedOptions = qType === 'true_false' ? ['True', 'False'] : parseOptions(q.options);
 
             return (
               <div key={q.id || idx} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
@@ -182,8 +215,7 @@ export default function TakeSurvey() {
                   <p className="text-sm font-semibold text-slate-800">{q.question_text}</p>
                 </div>
 
-                {/* Multiple Choice / Single Select Options */}
-                {isMcqType && (
+                {['mcq_single', 'true_false'].includes(qType) && (
                   <div className="space-y-2 pl-5">
                     {parsedOptions.length === 0 ? (
                       <p className="text-xs italic text-amber-600">No options available for this question.</p>
@@ -197,6 +229,7 @@ export default function TakeSurvey() {
                               name={`q_${q.id}`}
                               required={q.is_required}
                               value={optionLabel}
+                              checked={answers[q.id] === optionLabel}
                               onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                               className="text-indigo-600 focus:ring-indigo-500"
                             />
@@ -205,6 +238,23 @@ export default function TakeSurvey() {
                         );
                       })
                     )}
+                  </div>
+                )}
+
+                {qType === 'mcq_multiple' && (
+                  <div className="space-y-2 pl-5">
+                    {parsedOptions.length === 0 ? (
+                      <p className="text-xs italic text-amber-600">No options available for this question.</p>
+                    ) : parsedOptions.map((opt, oIdx) => {
+                      const optionLabel = typeof opt === 'object' ? opt.option_text || opt.label || JSON.stringify(opt) : opt;
+                      const selected = Array.isArray(answers[q.id]) && answers[q.id].includes(optionLabel);
+                      return (
+                        <label key={oIdx} className="flex items-center gap-3 p-2 rounded hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
+                          <input type="checkbox" checked={selected} onChange={(e) => handleMultipleChoiceChange(q.id, optionLabel, e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
+                          <span>{optionLabel}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -218,6 +268,7 @@ export default function TakeSurvey() {
                           name={`q_${q.id}`}
                           required={q.is_required}
                           value={val}
+                          checked={String(answers[q.id]) === String(val)}
                           onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                           className="sr-only"
                         />
@@ -232,16 +283,22 @@ export default function TakeSurvey() {
                   </div>
                 )}
 
-                {/* Text / Open-ended Questions */}
-                {(qType === 'text' || qType === 'textarea' || qType === 'open_ended') && (
+                {qType === 'text' && (
                   <div className="pl-5">
                     <textarea
                       rows="2"
                       required={q.is_required}
+                      value={answers[q.id] || ''}
                       onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                       placeholder="Type your response here..."
                       className="w-full p-2.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
                     ></textarea>
+                  </div>
+                )}
+
+                {qType === 'numeric' && (
+                  <div className="pl-5">
+                    <input type="number" required={q.is_required} value={answers[q.id] || ''} onChange={(e) => handleAnswerChange(q.id, e.target.value)} placeholder="Enter a number" className="w-full p-2.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none" />
                   </div>
                 )}
               </div>

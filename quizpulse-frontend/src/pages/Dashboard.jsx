@@ -1,11 +1,22 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import API from '../services/api';
-import { LayoutDashboard, PlusCircle, ExternalLink, BarChart2, Database, ClipboardList } from 'lucide-react';
+import { deleteSurvey } from '../services/surveyService';
+import { LayoutDashboard, PlusCircle, ExternalLink, BarChart2, Database, ClipboardList, Pencil, Trash2 } from 'lucide-react';
 
 export default function Dashboard() {
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const handleDeleteSurvey = async (survey) => {
+    if (!window.confirm(`Delete "${survey.title}"? This permanently removes its questions and responses.`)) return;
+    try {
+      await deleteSurvey(survey.id);
+      setSurveys((current) => current.filter((item) => item.id !== survey.id));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete survey. Please try again.');
+    }
+  };
 
   useEffect(() => {
     const fetchSurveys = async () => {
@@ -76,6 +87,11 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  {!survey.has_responses && Number(survey.response_count) === 0 && (
+                    <Link to={`/surveys/${survey.id}/edit`} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded border border-slate-200 transition-colors">
+                      <Pencil className="w-3.5 h-3.5" /> Edit Survey
+                    </Link>
+                  )}
                   <Link
                     to={`/survey/${survey.id}`}
                     target="_blank"
@@ -89,6 +105,13 @@ export default function Dashboard() {
                   >
                     <BarChart2 className="w-3.5 h-3.5" /> Analytics
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSurvey(survey)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
                 </div>
               </div>
             ))}

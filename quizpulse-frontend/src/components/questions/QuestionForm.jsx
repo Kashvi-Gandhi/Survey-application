@@ -3,7 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 
 export default function QuestionForm({ bankId, onQuestionAdded }) {
   const [questionText, setQuestionText] = useState('');
-  const [type, setType] = useState('mcq');
+  const [type, setType] = useState('mcq_single');
   const [options, setOptions] = useState(['', '']);
   const [error, setError] = useState('');
 
@@ -30,7 +30,7 @@ export default function QuestionForm({ bankId, onQuestionAdded }) {
       setError('Enter a question prompt.');
       return;
     }
-    if (type === 'mcq' && cleanedOptions.length < 2) {
+    if (['mcq_single', 'mcq_multiple'].includes(type) && cleanedOptions.length < 2) {
       setError('Multiple choice questions need at least two options.');
       return;
     }
@@ -39,10 +39,10 @@ export default function QuestionForm({ bankId, onQuestionAdded }) {
       bank_id: bankId,
       question_text: questionText.trim(),
       type,
-      options: type === 'mcq' ? cleanedOptions : null
+      options: type === 'true_false' ? ['True', 'False'] : ['mcq_single', 'mcq_multiple'].includes(type) ? cleanedOptions : null
     });
     setQuestionText('');
-    setType('mcq');
+    setType('mcq_single');
     setOptions(['', '']);
     setError('');
   };
@@ -72,15 +72,17 @@ export default function QuestionForm({ bankId, onQuestionAdded }) {
             onChange={(e) => setType(e.target.value)}
             className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
           >
-            <option value="mcq">Multiple Choice (MCQ)</option>
-            <option value="rating">Rating Scale (1 - 5 Stars)</option>
-            <option value="text">Short Text Response</option>
+            <option value="mcq_single">MCQ Single Select</option>
+            <option value="mcq_multiple">MCQ Multiple Select</option>
+            <option value="true_false">True / False</option>
+            <option value="text">Text</option>
+            <option value="numeric">Numeric Answer</option>
+            <option value="rating">Rate</option>
           </select>
         </div>
       </div>
 
-      {/* Dynamic MCQ Options Builder */}
-      {type === 'mcq' && (
+      {['mcq_single', 'mcq_multiple'].includes(type) && (
         <div className="space-y-2 pt-2">
           <label className="block text-xs font-semibold text-slate-700">Multiple Choice Options</label>
           {options.map((opt, idx) => (
@@ -113,6 +115,10 @@ export default function QuestionForm({ bankId, onQuestionAdded }) {
             <Plus className="w-3.5 h-3.5" /> Add Choice Option
           </button>
         </div>
+      )}
+
+      {type === 'true_false' && (
+        <p className="text-xs text-slate-500">Choices are automatically set to True and False.</p>
       )}
 
       <div className="pt-2">

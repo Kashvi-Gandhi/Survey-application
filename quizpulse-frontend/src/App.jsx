@@ -12,6 +12,7 @@ import QuestionBanks from './pages/QuestionBanks';
 import CreateSurvey from './pages/CreateSurvey';
 import TakeSurvey from './pages/TakeSurvey';
 import Analytics from './pages/Analytics';
+import EditSurvey from './pages/EditSurvey';
 
 export default function App() {
   return (
@@ -65,6 +66,15 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['surveyor', 'admin']}>
                     <Analytics />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/surveys/:id/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['surveyor', 'admin']}>
+                    <EditSurvey />
                   </ProtectedRoute>
                 }
               />

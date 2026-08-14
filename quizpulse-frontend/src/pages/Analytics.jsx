@@ -3,6 +3,21 @@ import { useParams, Link } from 'react-router-dom';
 import { getSurveyAnalytics } from '../services/surveyService';
 import { BarChart3, Users, Clock, ArrowLeft, RefreshCw, Eye, X } from 'lucide-react';
 
+const formatAnswer = (value) => {
+  if (value === null || value === undefined || value === '') return 'No answer provided';
+  if (Array.isArray(value)) return value.join(', ');
+  if (typeof value === 'object') return JSON.stringify(value);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.join(', ') : typeof parsed === 'object' ? JSON.stringify(parsed) : String(parsed);
+    } catch {
+      return value;
+    }
+  }
+  return String(value);
+};
+
 export default function Analytics() {
   const { id: surveyId } = useParams();
   const [analytics, setAnalytics] = useState(null);
@@ -173,7 +188,7 @@ export default function Analytics() {
                     <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Question {idx + 1}</p>
                     <p className="text-sm font-semibold text-slate-800">{answer.question_text}</p>
                     <div className="mt-2 pl-3 border-l-2 border-indigo-500 bg-white p-2 rounded text-sm text-slate-700">
-                      <strong>Response:</strong> {answer.user_answer || 'No answer provided'}
+                      <strong>Response:</strong> {formatAnswer(answer.user_answer ?? answer.response_text)}
                     </div>
                   </div>
                 ))

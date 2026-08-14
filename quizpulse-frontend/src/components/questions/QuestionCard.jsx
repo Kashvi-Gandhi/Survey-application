@@ -7,12 +7,18 @@ export default function QuestionCard({ question, onDelete }) {
 
   const getTypeBadge = () => {
     switch (type) {
-      case 'mcq':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><CheckSquare className="w-3 h-3"/> Multiple Choice</span>;
+      case 'mcq_single':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><CheckSquare className="w-3 h-3"/> MCQ Single Select</span>;
+      case 'mcq_multiple':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><CheckSquare className="w-3 h-3"/> MCQ Multiple Select</span>;
+      case 'true_false':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800"><CheckSquare className="w-3 h-3"/> True / False</span>;
       case 'rating':
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><Star className="w-3 h-3"/> Rating</span>;
       case 'text':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"><AlignLeft className="w-3 h-3"/> Short Text</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"><AlignLeft className="w-3 h-3"/> Text</span>;
+      case 'numeric':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800"><AlignLeft className="w-3 h-3"/> Numeric</span>;
       default:
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800"><HelpCircle className="w-3 h-3"/> General</span>;
     }
@@ -40,7 +46,7 @@ export default function QuestionCard({ question, onDelete }) {
       </div>
 
       {/* Render Options Preview based on Question Type */}
-      {type === 'mcq' && options && Array.isArray(options) && (
+      {['mcq', 'mcq_single', 'mcq_multiple', 'true_false'].includes(type) && options && Array.isArray(options) && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
           {options.map((opt, idx) => (
             <div key={idx} className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-slate-600">
