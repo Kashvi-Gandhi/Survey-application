@@ -95,4 +95,14 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
+const isAdmin = (req, res, next) => {
+  authenticateUser(req, res, () => {
+    if (req.user?.role !== 'admin') {
+      return errorResponse(res, 403, 'Forbidden');
+    }
+    next();
+  });
+};
+
 module.exports = authenticateUser;
+module.exports.isAdmin = isAdmin;

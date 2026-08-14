@@ -1,43 +1,80 @@
-🛡️ QuizPulse: Admin Dashboard & System Management Specification
-1. Executive Summary & Core Objectives
-The Admin Dashboard grants system administrators complete oversight over all platform users (surveyors), master template assets (question banks), and active surveys across the application without altering core user role definitions.
+# 🚀 QuizPulse - Comprehensive System Upgrade Specification
 
-2. High-Level Admin Capabilities
-👥 A. Surveyor (User) Management
-Surveyor Directory Table:
-Displays a full list of all registered surveyors on the platform.
-Columns: Surveyor Name, Email, Joined Date, Total Surveys Created, Total Responses Received, Account Status (is_active), and Actions.
+## MODULE 1: SURVEY BUILDER & QUESTION TYPE ENHANCEMENTS
 
-Account Status Toggle (is_active):
-Admins can activate or deactivate any surveyor account via an interactive status switch.
-Behavior: Setting is_active = false immediately revokes the surveyor's session and prevents them from logging in or modifying surveys.
+### 1. Fix Missing Input Rendering (`TakeSurvey.jsx`)
+- Ensure all question types render their corresponding input elements.
+- For `text` / `Text` types, render a `<textarea>` or `<input type="text">` bound to the component state (`answers[question.id]`).
 
-Account Deletion / Cleanup:
-Option to permanently remove inactive or spam surveyor accounts.
+### 2. Survey Editing Lock Integrity Rule
+- **Rule**: A survey can ONLY be edited if `response_count == 0`.
+- **Backend**: Reject `PUT /api/surveys/:id` with HTTP 400 if `response_count > 0`.
+- **Frontend**: Disable the "Edit Survey" button and display a badge/tooltip: *"Editing locked: Survey already has responses."*
 
-📚 B. Master Question Bank Management
-Admin-Managed Templates:
-Admins can Create, Update, and Delete official, platform-wide Question Banks.
-Categorize banks (e.g., Human Resources, Academic Feedback, Customer Satisfaction (CSAT)).
+### 3. Question Types Dropdown Specification
+The Question Type `<select>` dropdown must explicitly support:
+1. **MCQ Single Select** (`mcq_single`) — Custom radio choices.
+2. **MCQ Multiple Select** (`mcq_multiple`) — Custom checkboxes (stored as JSON array or comma-separated string).
+3. **True / False** (`true_false`) — Auto-assigns options `["True", "False"]`.
+4. **Yes / No** (`yes_no`) — Auto-assigns options `["Yes", "No"]`.
+5. **Text** (`text`) — Multi-line `<textarea>`.
+6. **Numeric Answer** (`numeric`) — `<input type="number">`.
+7. **Rate** (`rating`) — 1–5 scale or star rating buttons.
 
-Question Bank Inventory:
-Add, edit, or delete individual questions within any Master Question Bank.
-Surveyor Access: Surveyors can view and clone questions from these official banks directly into their own custom surveys.
+#### Builder Behavior:
+- For `true_false` and `yes_no`, automatically populate options under the hood and hide the "Add Custom Option" text fields in the builder.
 
-📋 C. Global Survey Moderation & Management
-System-Wide Survey Registry:
-A master view showing every survey created on the platform, regardless of who created it.
-Displays Survey Title, Creator Name/Email, Creation Date, Response Count, and Public Link Status.
+---
 
-Conditional Survey Editing:
-Admins have edit permissions over all surveys, subject to the safety rule: Surveys can only be edited if response_count == 0.
-Survey Deletion & Closure:
-Admins can delete any survey that violates platform guidelines or is marked as spam.
-Admins can force-close/archive an active survey to stop receiving new submissions ahead of schedule.
+## MODULE 2: BATCH QUESTION CREATION & DELETION
 
-📊 D. Platform Metrics & Analytics Cards
-The top header of the Admin Dashboard will feature summary overview cards:
-Total Surveyors: Count of active vs. inactive surveyor accounts.
-Total Surveys: Total number of surveys created across the system.
-Total Submissions: Cumulative response count recorded across all surveys.
-Master Question Banks: Total number of global template banks available.
+### 1. Batch Question Creation (Draft Mode)
+- **State**: Maintain `draftQuestions` local state array in the builder component.
+- **Buttons**:
+  - `+ Add Question`: Validates current inputs, pushes to `draftQuestions`, resets form fields.
+  - `Save All Questions`: Executes batch insert via `POST /api/questions/batch`.
+- **Backend Stored Procedure**: Use `quiz.usp_batch_create_questions` with `OPENJSON(@p_questions_json)` for efficient bulk insert.
+
+### 2. Question Deletion
+- **Draft Question Deletion**: `<Trash2 />` icon filters out the question locally from `draftQuestions`.
+- **Saved Question Deletion**: Deletes question via `DELETE /api/questions/:id` (executing `quiz.usp_delete_question`, ensuring associated response records are handled).
+
+---
+
+## MODULE 3: ADMIN DASHBOARD & SYSTEM MANAGEMENT (v2.0)
+
+### 1. Overview Metric Cards (Header)
+1. **Total Surveyors** (Active vs. Inactive count)
+2. **Total Surveys** (All-time system count)
+3. **Active Surveys** (Currently accepting responses)
+4. **Submissions** (Cumulative response count)
+5. **Question Banks** (Global template count)
+
+### 2. Surveyor Management
+- **Directory Table**: Columns for Name, Email, Joined Date, Surveys Created, Responses Received, `is_active` status, and Actions.
+- **Account Deactivation & Cleanup**:
+  - Primary Action: Toggle `is_active` status (`1` or `0`). Setting `is_active = 0` revokes session and blocks login.
+  - Secondary Action: Soft Delete (`deleted_at = TIMESTAMP`).
+  - Hard Delete: Strictly restricted to test/spam accounts with **zero associated surveys/responses**.
+
+### 3. Global Survey Registry & Lifecycle
+- **Lifecycle States**:
+  - 🟡 `DRAFT` — In creation.
+  - 🟢 `ACTIVE` / `PUBLISHED` — Accepting responses.
+  - 🔴 `CLOSED` — Manually closed or deadline reached.
+  - ⚫ `ARCHIVED` / `EXPIRED` — Read-only record.
+- **Registry Table**: Shows all system surveys with Creator Details, Lifecycle Badge, Response Count, and Action controls.
+- **Admin Moderation Actions**:
+  - Force Lifecycle State transition (`ACTIVE` ↔ `CLOSED` ↔ `ARCHIVED`).
+  - Edit or delete problematic surveys (subject to `response_count == 0` for edits).
+
+### 4. Master Question Bank Management
+- **Global Templates**: Admins can Create, Update, and Delete Master Question Banks grouped by Category (e.g., HR, Academic, CSAT).
+- **Surveyor Access**: Surveyors can view and clone questions from these official banks directly into their custom surveys.
+
+---
+
+## MODULE 4: TECHNICAL & SECURITY REQUIREMENTS
+
+1. **RBAC & Middleware**: Secure all `/api/admin/*` endpoints using `isAdmin` middleware verified via JWT `role`.
+2. **Database Integrity**: All SQL procedures must execute under the `quiz.` schema without cascading hard-deletes on active response records.
