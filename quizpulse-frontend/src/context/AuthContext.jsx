@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const userData = await getCurrentUser();
-          setUser(userData.data);
+          setUser(userData.data?.user || userData.data);
         } catch (err) {
           console.error('Session expired or invalid token:', err);
           logout();
@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         isAuthenticated: !!token,
         isSurveyor: user?.role === 'surveyor' || user?.role === 'admin',
+        isAdmin: user?.role === 'admin',
         login,
         register,
         logout

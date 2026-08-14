@@ -154,7 +154,7 @@ export default function CreateSurvey() {
               ) : (
                 banks.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.title} ({getQuestionCount(b)} questions)
+                    {b.is_master || b.is_global ? `[Master] ${b.title}` : b.title} ({getQuestionCount(b)} questions)
                   </option>
                 ))
               )}

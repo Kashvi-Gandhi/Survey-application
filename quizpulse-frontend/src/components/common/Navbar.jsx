@@ -1,10 +1,10 @@
 ﻿import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { ClipboardCheck, LayoutDashboard, Database, PlusCircle, BarChart3, LogOut, User } from 'lucide-react';
+import { ClipboardCheck, LayoutDashboard, Database, PlusCircle, BarChart3, LogOut, User, ShieldCheck } from 'lucide-react';
 
 export default function Navbar() {
-  const { user, isAuthenticated, logout, isSurveyor } = useAuth();
+  const { user, isAuthenticated, logout, isSurveyor, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -60,6 +60,17 @@ export default function Navbar() {
                     <PlusCircle className="w-4 h-4" /> Create Assessment
                   </Link>
                 </>
+              )}
+
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/admin') ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4" /> Admin
+                </Link>
               )}
             </div>
           )}

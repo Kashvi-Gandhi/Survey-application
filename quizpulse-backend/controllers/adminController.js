@@ -46,4 +46,42 @@ const toggleSurveyorStatus = async (req, res) => {
   }
 };
 
-module.exports = { getMetrics, getAllSurveyors, toggleSurveyorStatus };
+const getSystemSurveys = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('quiz.usp_admin_get_system_surveys');
+    return successResponse(res, 200, 'System surveys retrieved successfully', result.recordset || []);
+  } catch (err) {
+    console.error('Admin system surveys error:', err);
+    return errorResponse(res, 500, 'Failed to retrieve system surveys', err.message);
+  }
+};
+
+const updateSystemSurveyStatus = async (req, res) => {
+  try {
+    const status = String(req.body?.status || '').toUpperCase();
+    if (!['ACTIVE', 'CLOSED', 'ARCHIVED'].includes(status)) {
+      return errorResponse(res, 400, 'status must be ACTIVE, CLOSED, or ARCHIVED');
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('p_survey_id', sql.UniqueIdentifier, req.params.id)
+      .input('p_status', sql.NVarChar(20), status)
+      .execute('quiz.usp_admin_update_survey_status');
+
+    if (!result.rowsAffected?.[0]) return errorResponse(res, 404, 'Survey not found');
+    return successResponse(res, 200, 'Survey status updated successfully', result.recordset?.[0] || null);
+  } catch (err) {
+    console.error('Admin survey status error:', err);
+    return errorResponse(res, 500, 'Failed to update survey status', err.message);
+  }
+};
+
+module.exports = {
+  getMetrics,
+  getAllSurveyors,
+  toggleSurveyorStatus,
+  getSystemSurveys,
+  updateSystemSurveyStatus
+};
