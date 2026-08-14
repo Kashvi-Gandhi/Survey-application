@@ -1,0 +1,43 @@
+🛡️ QuizPulse: Admin Dashboard & System Management Specification
+1. Executive Summary & Core Objectives
+The Admin Dashboard grants system administrators complete oversight over all platform users (surveyors), master template assets (question banks), and active surveys across the application without altering core user role definitions.
+
+2. High-Level Admin Capabilities
+👥 A. Surveyor (User) Management
+Surveyor Directory Table:
+Displays a full list of all registered surveyors on the platform.
+Columns: Surveyor Name, Email, Joined Date, Total Surveys Created, Total Responses Received, Account Status (is_active), and Actions.
+
+Account Status Toggle (is_active):
+Admins can activate or deactivate any surveyor account via an interactive status switch.
+Behavior: Setting is_active = false immediately revokes the surveyor's session and prevents them from logging in or modifying surveys.
+
+Account Deletion / Cleanup:
+Option to permanently remove inactive or spam surveyor accounts.
+
+📚 B. Master Question Bank Management
+Admin-Managed Templates:
+Admins can Create, Update, and Delete official, platform-wide Question Banks.
+Categorize banks (e.g., Human Resources, Academic Feedback, Customer Satisfaction (CSAT)).
+
+Question Bank Inventory:
+Add, edit, or delete individual questions within any Master Question Bank.
+Surveyor Access: Surveyors can view and clone questions from these official banks directly into their own custom surveys.
+
+📋 C. Global Survey Moderation & Management
+System-Wide Survey Registry:
+A master view showing every survey created on the platform, regardless of who created it.
+Displays Survey Title, Creator Name/Email, Creation Date, Response Count, and Public Link Status.
+
+Conditional Survey Editing:
+Admins have edit permissions over all surveys, subject to the safety rule: Surveys can only be edited if response_count == 0.
+Survey Deletion & Closure:
+Admins can delete any survey that violates platform guidelines or is marked as spam.
+Admins can force-close/archive an active survey to stop receiving new submissions ahead of schedule.
+
+📊 D. Platform Metrics & Analytics Cards
+The top header of the Admin Dashboard will feature summary overview cards:
+Total Surveyors: Count of active vs. inactive surveyor accounts.
+Total Surveys: Total number of surveys created across the system.
+Total Submissions: Cumulative response count recorded across all surveys.
+Master Question Banks: Total number of global template banks available.
