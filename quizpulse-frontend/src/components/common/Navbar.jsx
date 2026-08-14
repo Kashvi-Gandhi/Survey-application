@@ -28,7 +28,7 @@ export default function Navbar() {
             <div className="p-2 bg-indigo-600/20 rounded-lg text-indigo-400 border border-indigo-500/30">
               <ClipboardCheck className="w-6 h-6" />
             </div>
-            <span>QuizPulse</span>
+            <span>SurveyPoint</span>
           </Link>
 
           {/* Nav Links for Authenticated Surveyors */}
