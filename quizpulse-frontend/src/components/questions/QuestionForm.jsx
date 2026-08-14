@@ -39,7 +39,7 @@ export default function QuestionForm({ bankId, onQuestionAdded }) {
       bank_id: bankId,
       question_text: questionText.trim(),
       type,
-      options: type === 'true_false' ? ['True', 'False'] : ['mcq_single', 'mcq_multiple'].includes(type) ? cleanedOptions : null
+      options: type === 'true_false' ? ['True', 'False'] : type === 'yes_no' ? ['Yes', 'No'] : ['mcq_single', 'mcq_multiple'].includes(type) ? cleanedOptions : null
     });
     setQuestionText('');
     setType('mcq_single');
@@ -75,6 +75,7 @@ export default function QuestionForm({ bankId, onQuestionAdded }) {
             <option value="mcq_single">MCQ Single Select</option>
             <option value="mcq_multiple">MCQ Multiple Select</option>
             <option value="true_false">True / False</option>
+            <option value="yes_no">Yes / No</option>
             <option value="text">Text</option>
             <option value="numeric">Numeric Answer</option>
             <option value="rating">Rate</option>
@@ -117,8 +118,8 @@ export default function QuestionForm({ bankId, onQuestionAdded }) {
         </div>
       )}
 
-      {type === 'true_false' && (
-        <p className="text-xs text-slate-500">Choices are automatically set to True and False.</p>
+      {['true_false', 'yes_no'].includes(type) && (
+        <p className="text-xs text-slate-500">Choices are automatically set to {type === 'true_false' ? 'True and False' : 'Yes and No'}.</p>
       )}
 
       <div className="pt-2">

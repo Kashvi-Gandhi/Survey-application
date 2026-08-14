@@ -13,6 +13,8 @@ export default function QuestionCard({ question, onDelete }) {
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><CheckSquare className="w-3 h-3"/> MCQ Multiple Select</span>;
       case 'true_false':
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800"><CheckSquare className="w-3 h-3"/> True / False</span>;
+      case 'yes_no':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800"><CheckSquare className="w-3 h-3"/> Yes / No</span>;
       case 'rating':
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><Star className="w-3 h-3"/> Rating</span>;
       case 'text':
@@ -46,7 +48,7 @@ export default function QuestionCard({ question, onDelete }) {
       </div>
 
       {/* Render Options Preview based on Question Type */}
-      {['mcq', 'mcq_single', 'mcq_multiple', 'true_false'].includes(type) && options && Array.isArray(options) && (
+      {['mcq', 'mcq_single', 'mcq_multiple', 'true_false', 'yes_no'].includes(type) && options && Array.isArray(options) && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
           {options.map((opt, idx) => (
             <div key={idx} className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-slate-600">

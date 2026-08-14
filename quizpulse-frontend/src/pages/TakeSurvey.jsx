@@ -206,7 +206,7 @@ export default function TakeSurvey() {
         <form onSubmit={handleSurveySubmit} className="space-y-4">
           {survey?.questions?.map((q, idx) => {
             const qType = getQuestionType(q);
-            const parsedOptions = qType === 'true_false' ? ['True', 'False'] : parseOptions(q.options);
+            const parsedOptions = qType === 'true_false' ? ['True', 'False'] : qType === 'yes_no' ? ['Yes', 'No'] : parseOptions(q.options);
 
             return (
               <div key={q.id || idx} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
@@ -215,7 +215,7 @@ export default function TakeSurvey() {
                   <p className="text-sm font-semibold text-slate-800">{q.question_text}</p>
                 </div>
 
-                {['mcq_single', 'true_false'].includes(qType) && (
+                {['mcq_single', 'true_false', 'yes_no'].includes(qType) && (
                   <div className="space-y-2 pl-5">
                     {parsedOptions.length === 0 ? (
                       <p className="text-xs italic text-amber-600">No options available for this question.</p>
