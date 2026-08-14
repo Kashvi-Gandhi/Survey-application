@@ -25,6 +25,20 @@ export const importSelectedQuestions = async (surveyId, bankId, questionIds) => 
   return response.data;
 };
 
+// surveyId is optional for question-bank drafts; those items include bank_id.
+export const createQuestionsBatch = async (surveyId, questions) => {
+  const response = await API.post('/questions/batch', {
+    survey_id: surveyId || null,
+    questions
+  });
+  return response.data;
+};
+
+export const deleteQuestion = async (questionId) => {
+  const response = await API.delete(`/questions/${questionId}`);
+  return response.data;
+};
+
 // Submit Survey Responses (Public endpoint - triggers stored procedure)
 export const submitSurveyResponse = async (surveyId, answers, takerName = null, takerEmail = null) => {
   const payload = {
@@ -52,6 +66,8 @@ export default {
   createSurvey,
   importBankToSurvey,
   importSelectedQuestions,
+  createQuestionsBatch,
+  deleteQuestion,
   submitSurveyResponse,
   getSurveyAnalytics
 };

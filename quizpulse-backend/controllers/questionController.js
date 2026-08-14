@@ -98,4 +98,46 @@ const createQuestion = async (req, res) => {
   }
 };
 
-module.exports = { createQuestion };
+const createQuestionsBatch = async (req, res) => {
+  try {
+    const { survey_id = null, questions } = req.body;
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ success: false, message: 'questions must be a non-empty array' });
+    }
+    if (questions.some((question) => !question?.question_text?.trim() || !question?.question_type)) {
+      return res.status(400).json({ success: false, message: 'Every question requires question_text and question_type' });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('p_survey_id', sql.UniqueIdentifier, survey_id || null)
+      .input('p_questions_json', sql.NVarChar(sql.MAX), JSON.stringify(questions))
+      .execute('quiz.usp_batch_create_questions');
+
+    return res.status(201).json({
+      success: true,
+      message: `${questions.length} question(s) created successfully`,
+      data: result.recordset || []
+    });
+  } catch (err) {
+    console.error('Batch question creation failed:', err);
+    return res.status(500).json({ success: false, message: 'Failed to create questions', error: err.message });
+  }
+};
+
+const deleteQuestion = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('p_question_id', sql.UniqueIdentifier, req.params.id)
+      .execute('quiz.usp_delete_question');
+
+    return res.status(200).json({ success: true, message: 'Question deleted successfully' });
+  } catch (err) {
+    console.error('Question deletion failed:', err);
+    return res.status(500).json({ success: false, message: 'Failed to delete question', error: err.message });
+  }
+};
+
+module.exports = { createQuestion, createQuestionsBatch, deleteQuestion };

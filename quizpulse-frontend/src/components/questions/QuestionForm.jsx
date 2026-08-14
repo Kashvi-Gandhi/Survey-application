@@ -1,11 +1,11 @@
 ﻿import React, { useState } from 'react';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 export default function QuestionForm({ bankId, onQuestionAdded }) {
   const [questionText, setQuestionText] = useState('');
   const [type, setType] = useState('mcq');
   const [options, setOptions] = useState(['', '']);
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleOptionChange = (index, value) => {
     const updated = [...options];
@@ -23,34 +23,34 @@ export default function QuestionForm({ bankId, onQuestionAdded }) {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!questionText.trim()) return;
-
-    setLoading(true);
-    const payload = {
-      bank_id: bankId,
-      question_text: questionText,
-      type,
-      options: type === 'mcq' ? options.filter((o) => o.trim() !== '') : null
-    };
-
-    try {
-      await onQuestionAdded(payload);
-      // Reset form
-      setQuestionText('');
-      setType('mcq');
-      setOptions(['', '']);
-    } catch (err) {
-      console.error('Failed to create question:', err);
-    } finally {
-      setLoading(false);
+    const cleanedOptions = options.map((option) => option.trim()).filter(Boolean);
+    if (!questionText.trim()) {
+      setError('Enter a question prompt.');
+      return;
     }
+    if (type === 'mcq' && cleanedOptions.length < 2) {
+      setError('Multiple choice questions need at least two options.');
+      return;
+    }
+
+    onQuestionAdded({
+      bank_id: bankId,
+      question_text: questionText.trim(),
+      type,
+      options: type === 'mcq' ? cleanedOptions : null
+    });
+    setQuestionText('');
+    setType('mcq');
+    setOptions(['', '']);
+    setError('');
   };
 
   return (
     <form onSubmit={handleSubmit} className="bg-slate-50 p-5 rounded-lg border border-slate-200 space-y-4">
       <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Add New Question</h3>
+      {error && <p className="text-xs text-red-600">{error}</p>}
 
       <div>
         <label className="block text-xs font-semibold text-slate-700 mb-1">Question Prompt</label>
@@ -118,10 +118,9 @@ export default function QuestionForm({ bankId, onQuestionAdded }) {
       <div className="pt-2">
         <button
           type="submit"
-          disabled={loading}
           className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-md shadow transition-colors cursor-pointer disabled:opacity-50"
         >
-          <Save className="w-4 h-4" /> {loading ? 'Saving Question...' : 'Save Question to Bank'}
+          <Plus className="w-4 h-4" /> + Add Question
         </button>
       </div>
     </form>

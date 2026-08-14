@@ -2,7 +2,8 @@
 import { HelpCircle, Star, AlignLeft, CheckSquare, Trash2 } from 'lucide-react';
 
 export default function QuestionCard({ question, onDelete }) {
-  const { question_text, type, options } = question;
+  const { question_text, options } = question;
+  const type = question.type || question.question_type;
 
   const getTypeBadge = () => {
     switch (type) {

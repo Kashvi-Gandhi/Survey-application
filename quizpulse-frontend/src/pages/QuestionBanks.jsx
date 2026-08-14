@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { getQuestionBanks, createQuestionBank, addQuestionToBank } from '../services/bankService';
+import { getQuestionBanks, createQuestionBank } from '../services/bankService';
+import { createQuestionsBatch, deleteQuestion } from '../services/surveyService';
 import QuestionCard from '../components/questions/QuestionCard';
 import QuestionForm from '../components/questions/QuestionForm';
-import { Database, FolderPlus, HelpCircle, RefreshCw } from 'lucide-react';
+import { Database, FolderPlus, HelpCircle, RefreshCw, Save } from 'lucide-react';
 
 export default function QuestionBanks() {
   const [banks, setBanks] = useState([]);
@@ -10,6 +11,8 @@ export default function QuestionBanks() {
   const [newBankTitle, setNewBankTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [creatingBank, setCreatingBank] = useState(false);
+  const [draftQuestions, setDraftQuestions] = useState([]);
+  const [savingDrafts, setSavingDrafts] = useState(false);
 
   const fetchBanks = async (keepSelectedId = null) => {
     try {
@@ -42,6 +45,7 @@ export default function QuestionBanks() {
       setCreatingBank(true);
       const res = await createQuestionBank({ title: newBankTitle });
       setNewBankTitle('');
+      setDraftQuestions([]);
       const newBankId = res.data?.id;
       await fetchBanks(newBankId);
     } catch (err) {
@@ -51,16 +55,51 @@ export default function QuestionBanks() {
     }
   };
 
-  const handleAddQuestion = async (questionPayload) => {
+  const handleAddQuestion = (questionPayload) => {
+    setDraftQuestions((current) => [...current, {
+      ...questionPayload,
+      client_id: crypto.randomUUID()
+    }]);
+  };
+
+  const handleSaveAllQuestions = async () => {
+    if (!selectedBank || draftQuestions.length === 0) return;
+
+    const typeMap = { mcq: 'single_select', rating: 'rating', text: 'one_line' };
     try {
-      // 1. Trigger Stored Procedure to save question to DB
-      await addQuestionToBank(questionPayload);
-      // 2. Re-fetch fresh bank data from Postgres to update questions list
+      setSavingDrafts(true);
+      await createQuestionsBatch(null, draftQuestions.map(({ client_id, type, ...question }) => ({
+        ...question,
+        question_type: typeMap[type] || type
+      })));
+      setDraftQuestions([]);
       await fetchBanks(selectedBank.id);
     } catch (err) {
-      console.error('Error adding question via stored procedure:', err);
-      alert('Failed to save question. Please check backend logs.');
+      console.error('Error saving question batch:', err);
+      alert(err.response?.data?.message || 'Failed to save question batch. Please check backend logs.');
+    } finally {
+      setSavingDrafts(false);
     }
+  };
+
+  const handleDeleteDraft = (clientId) => {
+    setDraftQuestions((current) => current.filter((question) => question.client_id !== clientId));
+  };
+
+  const handleDeleteSavedQuestion = async (questionId) => {
+    if (!window.confirm('Delete this question and all of its associated responses? This cannot be undone.')) return;
+    try {
+      await deleteQuestion(questionId);
+      await fetchBanks(selectedBank?.id);
+    } catch (err) {
+      console.error('Error deleting question:', err);
+      alert(err.response?.data?.message || 'Failed to delete question. Please try again.');
+    }
+  };
+
+  const handleBankSelection = (bank) => {
+    setSelectedBank(bank);
+    setDraftQuestions([]);
   };
 
   // Helper to extract questions list safely across different payload schemas
@@ -131,7 +170,7 @@ export default function QuestionBanks() {
                   return (
                     <button
                       key={bank.id}
-                      onClick={() => setSelectedBank(bank)}
+                      onClick={() => handleBankSelection(bank)}
                       className={`w-full text-left p-3 text-sm transition-colors flex items-center justify-between ${
                         selectedBank?.id === bank.id
                           ? 'bg-indigo-50 text-indigo-700 font-semibold border-l-4 border-indigo-600'
@@ -164,6 +203,33 @@ export default function QuestionBanks() {
               {/* Dynamic Question Builder Form */}
               <QuestionForm bankId={selectedBank.id} onQuestionAdded={handleAddQuestion} />
 
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Draft Questions ({draftQuestions.length})</h3>
+                    <p className="text-xs text-slate-500 mt-1">Review drafts before saving them to this bank.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveAllQuestions}
+                    disabled={savingDrafts || draftQuestions.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-md shadow transition-colors disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" /> {savingDrafts ? 'Saving All...' : 'Save All Questions'}
+                  </button>
+                </div>
+
+                {draftQuestions.length === 0 ? (
+                  <p className="text-xs text-slate-400">Questions added with the form will appear here.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {draftQuestions.map((question) => (
+                      <QuestionCard key={question.client_id} question={question} onDelete={() => handleDeleteDraft(question.client_id)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* List of Questions in Bank */}
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -177,7 +243,7 @@ export default function QuestionBanks() {
                   </div>
                 ) : (
                   currentQuestions.map((q, idx) => (
-                    <QuestionCard key={q.id || idx} question={q} />
+                    <QuestionCard key={q.id || idx} question={q} onDelete={handleDeleteSavedQuestion} />
                   ))
                 )}
               </div>
