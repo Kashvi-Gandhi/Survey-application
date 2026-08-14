@@ -70,42 +70,31 @@ const parseSqlJson = (result) => {
 
 const createQuestion = async (req, res) => {
   try {
-    const {
-      bank_id,
-      survey_id,
-      question_text,
-      question_type,
-      points,
-      is_required,
-      options,
-      correct_answer
-    } = req.body;
-
-    if (!question_text || !question_type) {
-      return errorResponse(res, 400, 'Question text and question type are required');
-    }
-
-    const cleanBankId = bank_id && String(bank_id).trim() !== '' ? bank_id : null;
-    const cleanSurveyId = survey_id && String(survey_id).trim() !== '' ? survey_id : null;
+    const { bank_id, question_text, question_type, options } = req.body;
+    const userId = req.user?.id || req.user?.user_id || null;
 
     const pool = await poolPromise;
     const result = await pool.request()
-      .input('p_bank_id', sql.UniqueIdentifier, cleanBankId)
-      .input('p_survey_id', sql.UniqueIdentifier, cleanSurveyId)
-      .input('p_question_text', sql.NVarChar(sql.MAX), question_text)
-      .input('p_question_type', sql.NVarChar(50), question_type)
-      .input('p_points', sql.Int, points ? parseInt(points, 10) : 1)
-      .input('p_is_required', sql.Bit, is_required !== undefined ? Boolean(is_required) : true)
-      .input('p_options', sql.NVarChar(sql.MAX), options ? JSON.stringify(options) : '[]')
-      .input('p_correct_answer', sql.NVarChar(sql.MAX), correct_answer ? JSON.stringify(correct_answer) : null)
-      .execute('usp_addquestion');
+      .input('bank_id', sql.NVarChar(100), bank_id)
+      .input('question_text', sql.NVarChar(sql.MAX), question_text)
+      .input('question_type', sql.NVarChar(50), question_type || 'multiple_choice')
+      .input('options', sql.NVarChar(sql.MAX), typeof options === 'object' ? JSON.stringify(options) : options)
+      .input('created_by', sql.NVarChar(100), userId)
+      .execute('quiz.usp_addquestion');
 
-    const data = parseSqlJson(result);
-    return successResponse(res, 201, 'Question created successfully', data);
+    return res.status(201).json({
+      success: true,
+      message: 'Question added successfully',
+      data: result.recordset[0]
+    });
 
   } catch (err) {
     console.error('❌ Controller Exception (createQuestion):', err);
-    return errorResponse(res, 500, 'Failed to create question', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to add question',
+      error: err.message
+    });
   }
 };
 

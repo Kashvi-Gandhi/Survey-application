@@ -85,7 +85,7 @@ const createBank = async (req, res) => {
       .input('name', sql.NVarChar(255), finalName)
       .input('description', sql.NVarChar(sql.MAX), description || '')
       .input('created_by', sql.NVarChar(100), userId)
-      .execute('usp_createquestionbank');
+      .execute('quiz.usp_createquestionbank');
 
     return res.status(201).json({
       success: true,
@@ -111,11 +111,17 @@ const getBanks = async (req, res) => {
 
     const result = await pool.request()
       .input('user_id', sql.NVarChar(100), userId)
-      .execute('usp_getuserquestionbanks');
+      .execute('quiz.usp_getuserquestionbanks');
+
+    // Parse the nested JSON string for each bank's questions
+    const formattedBanks = result.recordset.map(bank => ({
+      ...bank,
+      questions: bank.questions_json ? JSON.parse(bank.questions_json) : []
+    }));
 
     return res.status(200).json({
       success: true,
-      data: result.recordset
+      data: formattedBanks
     });
 
   } catch (err) {

@@ -227,8 +227,8 @@ const getSurveys = async (req, res) => {
 
     // Use 'user_id' instead of 'p_user_id'
     const result = await pool.request()
-      .input('user_id', sql.NVarChar(100), userId) 
-      .execute('usp_getusersurveys');
+      .input('user_id', sql.NVarChar(100), userId)
+      .execute('quiz.usp_getusersurveys');
 
     return res.status(200).json({
       success: true,
@@ -253,18 +253,40 @@ const getSurveyById = async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('p_survey_id', sql.UniqueIdentifier, id)
-      .execute('usp_getsurveybyid');
+      .execute('quiz.usp_getsurveybyid');
 
-    const surveyData = parseSqlJson(result);
+    // Extract raw SQL result string
+    const rawRecord = result.recordset?.[0];
+    let surveyData = null;
 
-    if (!surveyData) {
-      return errorResponse(res, 404, 'Survey not found');
+    if (rawRecord) {
+      const rawJson = Object.values(rawRecord)[0];
+      surveyData = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
     }
 
-    return successResponse(res, 200, 'Survey retrieved successfully', surveyData);
+    if (!surveyData) {
+      return res.status(404).json({ success: false, message: 'Survey not found' });
+    }
+
+    // Ensure questions is parsed as an array if returned as string
+    if (typeof surveyData.questions_json === 'string') {
+      surveyData.questions = JSON.parse(surveyData.questions_json);
+    } else {
+      surveyData.questions = surveyData.questions || [];
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: surveyData
+    });
+
   } catch (err) {
     console.error('❌ Exception in getSurveyById:', err);
-    return errorResponse(res, 500, 'Failed to fetch survey', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch survey',
+      error: err.message
+    });
   }
 };
 
@@ -272,7 +294,7 @@ const getSurveyById = async (req, res) => {
 const createSurvey = async (req, res) => {
   try {
     const { title, description } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?.id || req.user?.user_id || null;
 
     if (!title) {
       return errorResponse(res, 400, 'Survey title is required');
@@ -282,15 +304,26 @@ const createSurvey = async (req, res) => {
     const result = await pool.request()
       .input('p_title', sql.NVarChar(255), title)
       .input('p_description', sql.NVarChar(sql.MAX), description || null)
-      .input('p_created_by', sql.UniqueIdentifier, userId || null)
-      .execute('usp_createsurvey');
+      .input('p_created_by', sql.NVarChar(100), userId) // Updated to NVarChar
+      .execute('quiz.usp_createsurvey');
 
-    const data = parseSqlJson(result);
-    return successResponse(res, 201, 'Survey created successfully', data);
+    // Handle string or object recordsets
+    const rawData = result.recordset?.[0];
+    const data = rawData?.id ? rawData : parseSqlJson(result);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Survey created successfully',
+      data: data
+    });
 
   } catch (err) {
     console.error('❌ Exception in createSurvey:', err);
-    return errorResponse(res, 500, 'Failed to create survey', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create survey',
+      error: err.message
+    });
   }
 };
 
@@ -308,7 +341,7 @@ const addQuestionsFromBank = async (req, res) => {
       .input('p_survey_id', sql.UniqueIdentifier, survey_id)
       .input('p_bank_id', sql.UniqueIdentifier, bank_id)
       .input('p_question_ids', sql.NVarChar(sql.MAX), null)
-      .execute('usp_importbanktoassessment');
+      .execute('quiz.usp_importbanktoassessment');
 
     const data = parseSqlJson(result);
     return successResponse(res, 201, 'Imported questions into survey successfully', data);
@@ -333,7 +366,7 @@ const importSelectedQuestions = async (req, res) => {
       .input('p_survey_id', sql.UniqueIdentifier, survey_id)
       .input('p_bank_id', sql.UniqueIdentifier, bank_id)
       .input('p_question_ids', sql.NVarChar(sql.MAX), JSON.stringify(question_ids))
-      .execute('usp_importbanktoassessment');
+      .execute('quiz.usp_importbanktoassessment');
 
     const data = parseSqlJson(result);
     return successResponse(res, 201, 'Imported selected questions into survey successfully', data);
@@ -365,7 +398,7 @@ const submitResponse = async (req, res) => {
       .input('p_taker_name', sql.NVarChar(255), taker_name || null)
       .input('p_taker_email', sql.NVarChar(255), taker_email || null)
       .input('p_answers', sql.NVarChar(sql.MAX), JSON.stringify(answers))
-      .execute('submit_question_responses');
+      .execute('quiz.usp_submit_question_responses');
 
     const data = parseSqlJson(result);
     return successResponse(res, 201, 'Survey submitted successfully', data);
@@ -384,18 +417,7 @@ const getSurveyAnalytics = async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('p_survey_id', sql.UniqueIdentifier, id)
-      .query(`
-        SELECT 
-          s.id AS survey_id,
-          s.title,
-          COUNT(DISTINCT r.respondent_id) + COUNT(DISTINCT r.taker_email) AS total_responses,
-          AVG(r.score_earned) AS average_score
-        FROM surveys s
-        LEFT JOIN responses r ON r.survey_id = s.id
-        WHERE s.id = @p_survey_id
-        GROUP BY s.id, s.title
-        FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
-      `);
+      .execute('quiz.usp_getSurveyAnalytics');
 
     const data = parseSqlJson(result);
     return successResponse(res, 200, 'Survey analytics calculated successfully', data);

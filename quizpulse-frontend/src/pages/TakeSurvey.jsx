@@ -30,7 +30,7 @@ export default function TakeSurvey() {
   }, [surveyId]);
 
   const handleAnswerChange = (questionId, value) => {
-    setAnswers({ ...answers, [questionId]: value });
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
   const handleInfoSubmit = (e) => {
@@ -76,8 +76,7 @@ export default function TakeSurvey() {
         </div>
         <h2 className="text-2xl font-bold text-slate-900">Thank You!</h2>
         <p className="text-sm text-slate-600">
-          Your survey responses have been submitted successfully, <strong>{takerInfo.name}</strong>. 
-          {/* A confirmation will be sent to <strong>{takerInfo.email}</strong>. */}
+          Your survey responses have been submitted successfully, <strong>{takerInfo.name}</strong>.
         </p>
       </div>
     );
@@ -112,7 +111,7 @@ export default function TakeSurvey() {
           <p className="text-sm text-slate-600 mb-6">
             Please provide your details below to begin the assessment. Your information will be used to track your responses and provide results.
           </p>
-          
+
           <form onSubmit={handleInfoSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
@@ -159,68 +158,95 @@ export default function TakeSurvey() {
       {/* Step 2: Survey Questions */}
       {takingStep === 'survey' && (
         <form onSubmit={handleSurveySubmit} className="space-y-4">
-          {survey?.questions?.map((q, idx) => (
-            <div key={q.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-              <div className="flex items-start gap-2">
-                <span className="font-bold text-indigo-600 text-sm">{idx + 1}.</span>
-                <p className="text-sm font-semibold text-slate-800">{q.question_text}</p>
+          {survey?.questions?.map((q, idx) => {
+            const qType = (q.type || q.question_type || '').toLowerCase();
+
+            // Safely parse options array
+            let parsedOptions = [];
+            if (Array.isArray(q.options)) {
+              parsedOptions = q.options;
+            } else if (typeof q.options === 'string' && q.options.trim() !== '') {
+              try {
+                parsedOptions = JSON.parse(q.options);
+              } catch (e) {
+                parsedOptions = [];
+              }
+            }
+
+            const isMcqType = ['mcq', 'multiple_choice', 'single_select', 'choice', 'options'].includes(qType);
+
+            return (
+              <div key={q.id || idx} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-indigo-600 text-sm">{idx + 1}.</span>
+                  <p className="text-sm font-semibold text-slate-800">{q.question_text}</p>
+                </div>
+
+                {/* Multiple Choice / Single Select Options */}
+                {isMcqType && (
+                  <div className="space-y-2 pl-5">
+                    {parsedOptions.length === 0 ? (
+                      <p className="text-xs italic text-amber-600">No options available for this question.</p>
+                    ) : (
+                      parsedOptions.map((opt, oIdx) => {
+                        const optionLabel = typeof opt === 'object' ? opt.option_text || opt.label || JSON.stringify(opt) : opt;
+                        return (
+                          <label key={oIdx} className="flex items-center gap-3 p-2 rounded hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
+                            <input
+                              type="radio"
+                              name={`q_${q.id}`}
+                              required={q.is_required}
+                              value={optionLabel}
+                              onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                              className="text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span>{optionLabel}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {/* Rating Questions */}
+                {qType === 'rating' && (
+                  <div className="flex items-center gap-3 pl-5 pt-1">
+                    {[1, 2, 3, 4, 5].map((val) => (
+                      <label key={val} className="flex flex-col items-center gap-1 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`q_${q.id}`}
+                          required={q.is_required}
+                          value={val}
+                          onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                          className="sr-only"
+                        />
+                        <Star
+                          className={`w-7 h-7 transition-colors ${
+                            Number(answers[q.id]) >= val ? 'fill-amber-400 stroke-amber-500' : 'text-slate-300'
+                          }`}
+                        />
+                        <span className="text-xs font-semibold text-slate-500">{val}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {/* Text / Open-ended Questions */}
+                {(qType === 'text' || qType === 'textarea' || qType === 'open_ended') && (
+                  <div className="pl-5">
+                    <textarea
+                      rows="2"
+                      required={q.is_required}
+                      onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                      placeholder="Type your response here..."
+                      className="w-full p-2.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
+                    ></textarea>
+                  </div>
+                )}
               </div>
-
-              {/* Render Question Input based on Type */}
-              {q.type === 'mcq' && q.options && (
-                <div className="space-y-2 pl-5">
-                  {q.options.map((opt, oIdx) => (
-                    <label key={oIdx} className="flex items-center gap-3 p-2 rounded hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
-                      <input
-                        type="radio"
-                        name={`q_${q.id}`}
-                        required
-                        value={opt}
-                        onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                        className="text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <span>{opt}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              {q.type === 'rating' && (
-                <div className="flex items-center gap-3 pl-5 pt-1">
-                  {[1, 2, 3, 4, 5].map((val) => (
-                    <label key={val} className="flex flex-col items-center gap-1 cursor-pointer">
-                      <input
-                        type="radio"
-                        name={`q_${q.id}`}
-                        required
-                        value={val}
-                        onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                        className="sr-only"
-                      />
-                      <Star
-                        className={`w-7 h-7 transition-colors ${
-                          answers[q.id] >= val ? 'fill-amber-400 stroke-amber-500' : 'text-slate-300'
-                        }`}
-                      />
-                      <span className="text-xs font-semibold text-slate-500">{val}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              {q.type === 'text' && (
-                <div className="pl-5">
-                  <textarea
-                    rows="2"
-                    required
-                    onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                    placeholder="Type your response here..."
-                    className="w-full p-2.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
-                  ></textarea>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
 
           <div className="pt-2 flex justify-between items-center">
             <button

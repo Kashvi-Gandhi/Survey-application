@@ -69,7 +69,13 @@ export default function CreateSurvey() {
     try {
       // 1. Create survey shell
       const surveyRes = await createSurvey({ title, description });
-      const surveyId = surveyRes.data?.id;
+      
+      // Safely extract survey ID
+      const surveyId = surveyRes?.data?.id || surveyRes?.id;
+
+      if (!surveyId) {
+        throw new Error('Survey ID was not returned by the server.');
+      }
 
       // 2. Import selected questions
       await importSelectedQuestions(surveyId, selectedBankId, selectedQuestions);
@@ -77,7 +83,8 @@ export default function CreateSurvey() {
       // Redirect to Dashboard
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to publish assessment survey.');
+      console.error('❌ Error creating assessment:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to publish assessment survey.');
     } finally {
       setLoading(false);
     }

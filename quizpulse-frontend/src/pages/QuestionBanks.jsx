@@ -14,14 +14,14 @@ export default function QuestionBanks() {
   const fetchBanks = async (keepSelectedId = null) => {
     try {
       const res = await getQuestionBanks();
-      // Safely extract array regardless of backend payload structure
       const loadedBanks = res.data || [];
       setBanks(loadedBanks);
 
       if (loadedBanks.length > 0) {
         const targetId = keepSelectedId || selectedBank?.id || loadedBanks[0].id;
         const current = loadedBanks.find((b) => b.id === targetId) || loadedBanks[0];
-        setSelectedBank(current);
+        // Ensure state updates with fresh nested questions!
+        setSelectedBank(current); 
       }
     } catch (err) {
       console.error('Failed to fetch question banks:', err);
