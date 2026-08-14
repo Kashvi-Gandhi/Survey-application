@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BarChart3, BookOpen, ClipboardList, Database, FileText, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { getAdminMetrics, getAdminSurveyors, updateSurveyorStatus } from '../services/adminService';
 import SystemSurveys from '../components/admin/SystemSurveys';
+import MasterQuestionBanks from '../components/admin/MasterQuestionBanks';
 
 const tabs = [
   { id: 'overview', label: 'Overview & Surveyors' },
@@ -98,7 +99,7 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'surveys' && <SystemSurveys />}
-      {activeTab === 'banks' && <div className="p-12 text-center bg-white border border-dashed border-slate-300 rounded-xl text-slate-500"><Database className="w-8 h-8 mx-auto mb-3 text-slate-300" /><p className="font-semibold">Master Question Banks</p><p className="text-sm mt-1">Available in Phase 3.</p></div>}
+      {activeTab === 'banks' && <MasterQuestionBanks />}
     </div>
   );
 }

@@ -6,8 +6,8 @@ BEGIN
     SET NOCOUNT ON;
 
     SET @p_status = UPPER(LTRIM(RTRIM(@p_status)));
-    IF @p_status NOT IN ('ACTIVE', 'CLOSED', 'ARCHIVED')
-        THROW 50010, 'status must be ACTIVE, CLOSED, or ARCHIVED.', 1;
+    IF @p_status NOT IN ('DRAFT', 'ACTIVE', 'CLOSED', 'ARCHIVED')
+        THROW 50010, 'status must be DRAFT, ACTIVE, CLOSED, or ARCHIVED.', 1;
 
     UPDATE quiz.surveys
     SET status = @p_status,

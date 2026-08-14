@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getSurveyAnalytics } from '../services/surveyService';
 import { BarChart3, Users, Clock, ArrowLeft, RefreshCw, Eye, X } from 'lucide-react';
 
@@ -20,6 +20,7 @@ const formatAnswer = (value) => {
 
 export default function Analytics() {
   const { id: surveyId } = useParams();
+  const navigate = useNavigate();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -53,13 +54,18 @@ export default function Analytics() {
     setSelectedResponse(null);
   };
 
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate('/dashboard');
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between pb-4 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <Link to="/dashboard" className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
+          <button type="button" onClick={goBack} aria-label="Go back" className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <BarChart3 className="w-6 h-6 text-indigo-600" /> Survey Analytics

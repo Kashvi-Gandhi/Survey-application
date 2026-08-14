@@ -8,6 +8,9 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Survey links are public respondent-facing forms, not workspace pages.
+  if (location.pathname.startsWith('/survey/')) return null;
+
   const handleLogout = () => {
     logout();
     navigate('/login');

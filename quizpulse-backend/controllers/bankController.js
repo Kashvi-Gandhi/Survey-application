@@ -87,10 +87,21 @@ const createBank = async (req, res) => {
       .input('created_by', sql.NVarChar(100), userId)
       .execute('quiz.usp_createquestionbank');
 
+    // Admin-created banks are official templates by default.  Keep normal surveyor
+    // banks private, even though both roles use this shared endpoint.
+    const createdBank = result.recordset?.[0];
+    const bankId = createdBank?.id || (createdBank && Object.values(createdBank)[0]?.id);
+    if (req.user?.role === 'admin' && bankId) {
+      await pool.request()
+        .input('p_bank_id', sql.UniqueIdentifier, bankId)
+        .query('UPDATE quiz.question_banks SET is_global = 1 WHERE id = @p_bank_id');
+      if (createdBank) createdBank.is_global = true;
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Question bank created successfully',
-      data: result.recordset[0]
+      data: createdBank
     });
 
   } catch (err) {
