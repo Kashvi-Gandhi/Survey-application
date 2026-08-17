@@ -3,6 +3,7 @@ const { isAdmin } = require('../middleware/authMiddleware');
 const {
   getMetrics,
   getAllSurveyors,
+  updateUserProfile,
   toggleSurveyorStatus,
   getSystemSurveys,
   updateSystemSurveyStatus,
@@ -18,6 +19,7 @@ const router = express.Router();
 router.use(isAdmin);
 router.get('/metrics', getMetrics);
 router.get('/surveyors', getAllSurveyors);
+router.put('/surveyors/:id', updateUserProfile);
 router.patch('/surveyors/:id/status', toggleSurveyorStatus);
 router.get('/surveys', getSystemSurveys);
 router.patch('/surveys/:id/status', updateSystemSurveyStatus);

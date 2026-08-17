@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, BookOpen, ClipboardList, FileText, RefreshCw, ShieldCheck, Users } from 'lucide-react';
-import { getAdminMetrics, getAdminSurveyors, updateSurveyorStatus } from '../services/adminService';
+import { BarChart3, BookOpen, ClipboardList, FileText, RefreshCw, ShieldCheck, Users, Pencil, Check, X } from 'lucide-react';
+import { getAdminMetrics, getAdminSurveyors, updateAdminUser, updateSurveyorStatus } from '../services/adminService';
 import SystemSurveys from '../components/admin/SystemSurveys';
+import { useAuth } from '../context/AuthContext';
 
 const tabs = [
   { id: 'overview', label: 'Overview & Surveyors' },
@@ -11,12 +12,15 @@ const tabs = [
 const isActiveSurveyor = (surveyor) => surveyor.is_active === true || Number(surveyor.is_active) === 1;
 
 export default function AdminDashboard() {
+  const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [metrics, setMetrics] = useState(null);
   const [surveyors, setSurveyors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingId, setUpdatingId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editValues, setEditValues] = useState({ name: '', email: '', role: 'surveyor' });
 
   const loadAdminData = async () => {
     setLoading(true);
@@ -47,6 +51,48 @@ export default function AdminDashboard() {
       )));
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update surveyor status.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const startEditing = (user) => {
+    setEditingId(user.id);
+    setEditValues({
+      name: user.name || '',
+      email: user.email || '',
+      role: (user.role || 'surveyor').toLowerCase()
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditValues({ name: '', email: '', role: 'surveyor' });
+  };
+
+  const saveUserEdit = async (user) => {
+    if (!editValues.name.trim() || !editValues.email.trim()) {
+      setError('Name and email are required.');
+      return;
+    }
+
+    try {
+      setUpdatingId(user.id);
+      const response = await updateAdminUser(user.id, {
+        name: editValues.name.trim(),
+        email: editValues.email.trim(),
+        role: editValues.role,
+        is_active: isActiveSurveyor(user)
+      });
+
+      const updatedUser = response.data || response;
+      setSurveyors((current) => current.map((item) => (
+        item.id === user.id ? { ...item, ...updatedUser, role: updatedUser.role || item.role } : item
+      )));
+      setEditingId(null);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update user details.');
     } finally {
       setUpdatingId(null);
     }
@@ -138,21 +184,21 @@ export default function AdminDashboard() {
                 <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
                   <Users className="w-4 h-4 text-slate-700" />
                   <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                    Surveyor Directory
+                    User Directory
                   </h2>
                 </div>
 
                 {/* Table Content */}
                 {loading ? (
-                  <div className="p-10 text-center text-sm text-slate-500">Loading surveyors...</div>
+                  <div className="p-10 text-center text-sm text-slate-500">Loading users...</div>
                 ) : surveyors.length === 0 ? (
-                  <div className="p-10 text-center text-sm text-slate-500">No surveyors found.</div>
+                  <div className="p-10 text-center text-sm text-slate-500">No users found.</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-slate-50 border-b border-slate-100">
                         <tr>
-                          {['Name', 'Email', 'Joined Date', 'Surveys Created', 'Responses Received', 'Status', 'Actions'].map((heading) => (
+                          {['Name', 'Email', 'Role', 'Joined Date', 'Surveys Created', 'Responses Received', 'Status', 'Actions'].map((heading) => (
                             <th
                               key={heading}
                               className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-600"
@@ -165,12 +211,48 @@ export default function AdminDashboard() {
                       <tbody className="divide-y divide-slate-100">
                         {surveyors.map((surveyor) => {
                           const active = isActiveSurveyor(surveyor);
+                          const isEditing = editingId === surveyor.id && isAdmin;
+
                           return (
-                            <tr key={surveyor.id} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                                {surveyor.name || 'Unnamed surveyor'}
+                            <tr key={surveyor.id} className="hover:bg-slate-50/50 transition-colors align-top">
+                              <td className="px-6 py-4 text-sm font-medium text-slate-900 min-w-[160px]">
+                                {isEditing ? (
+                                  <input
+                                    value={editValues.name}
+                                    onChange={(event) => setEditValues({ ...editValues, name: event.target.value })}
+                                    className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                                  />
+                                ) : (
+                                  surveyor.name || 'Unnamed user'
+                                )}
                               </td>
-                              <td className="px-6 py-4 text-sm text-slate-600">{surveyor.email}</td>
+                              <td className="px-6 py-4 text-sm text-slate-600 min-w-[220px]">
+                                {isEditing ? (
+                                  <input
+                                    value={editValues.email}
+                                    onChange={(event) => setEditValues({ ...editValues, email: event.target.value })}
+                                    className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                                  />
+                                ) : (
+                                  surveyor.email
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 min-w-[140px]">
+                                {isEditing ? (
+                                  <select
+                                    value={editValues.role}
+                                    onChange={(event) => setEditValues({ ...editValues, role: event.target.value })}
+                                    className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                                  >
+                                    <option value="admin">Admin</option>
+                                    <option value="surveyor">Surveyor</option>
+                                  </select>
+                                ) : (
+                                  <span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold uppercase tracking-wider">
+                                    {surveyor.role || 'surveyor'}
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-6 py-4 text-sm text-slate-600">
                                 {surveyor.created_at ? new Date(surveyor.created_at).toLocaleDateString() : '—'}
                               </td>
@@ -192,23 +274,56 @@ export default function AdminDashboard() {
                                 </span>
                               </td>
                               <td className="px-6 py-4">
-                                <button
-                                  type="button"
-                                  role="switch"
-                                  aria-checked={active}
-                                  aria-label={`Set ${surveyor.name || surveyor.email} ${active ? 'inactive' : 'active'}`}
-                                  disabled={updatingId === surveyor.id}
-                                  onClick={() => handleStatusToggle(surveyor)}
-                                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-                                    active ? 'bg-[#3B6280]' : 'bg-slate-300'
-                                  }`}
-                                >
-                                  <span
-                                    className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-                                      active ? 'translate-x-6' : 'translate-x-1'
-                                    }`}
-                                  />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  {isAdmin && (
+                                    <>
+                                      {isEditing ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() => saveUserEdit(surveyor)}
+                                            disabled={updatingId === surveyor.id}
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-md"
+                                          >
+                                            <Check className="w-3.5 h-3.5" /> Save
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={cancelEditing}
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md"
+                                          >
+                                            <X className="w-3.5 h-3.5" /> Cancel
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => startEditing(surveyor)}
+                                          className="inline-flex items-center gap-1 px-2 py-1 bg-[#3B6280] hover:bg-[#2C4B63] text-white text-xs font-semibold rounded-md"
+                                        >
+                                          <Pencil className="w-3.5 h-3.5" /> Edit
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                  <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={active}
+                                    aria-label={`Set ${surveyor.name || surveyor.email} ${active ? 'inactive' : 'active'}`}
+                                    disabled={updatingId === surveyor.id || !isAdmin}
+                                    onClick={() => handleStatusToggle(surveyor)}
+                                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                                      active ? 'bg-[#3B6280]' : 'bg-slate-300'
+                                    } ${!isAdmin ? 'cursor-not-allowed' : ''}`}
+                                  >
+                                    <span
+                                      className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                                        active ? 'translate-x-6' : 'translate-x-1'
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );

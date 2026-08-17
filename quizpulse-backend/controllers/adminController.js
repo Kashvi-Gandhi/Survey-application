@@ -15,11 +15,100 @@ const getMetrics = async (req, res) => {
 const getAllSurveyors = async (req, res) => {
   try {
     const pool = await poolPromise;
-    const result = await pool.request().execute('quiz.usp_admin_get_all_surveyors');
-    return successResponse(res, 200, 'Surveyors retrieved successfully', result.recordset || []);
+    const result = await pool.request().query(`
+      SELECT
+        p.id,
+        p.full_name AS name,
+        p.email,
+        p.created_at,
+        p.is_active,
+        r.role_name AS role,
+        COALESCE(survey_counts.surveys_created, 0) AS surveys_created,
+        COALESCE(response_counts.responses_received, 0) AS responses_received
+      FROM quiz.profiles p
+      INNER JOIN quiz.role_master r ON r.id = p.role_id
+      OUTER APPLY (
+        SELECT COUNT(*) AS surveys_created
+        FROM quiz.surveys s
+        WHERE s.created_by = p.id
+      ) survey_counts
+      OUTER APPLY (
+        SELECT COUNT(*) AS responses_received
+        FROM quiz.responses response
+        INNER JOIN quiz.surveys s ON s.id = response.survey_id
+        WHERE s.created_by = p.id
+      ) response_counts
+      WHERE LOWER(r.role_name) IN ('surveyor', 'admin')
+      ORDER BY p.created_at DESC;
+    `);
+
+    return successResponse(res, 200, 'Users retrieved successfully', result.recordset || []);
   } catch (err) {
-    console.error('Admin surveyors error:', err);
-    return errorResponse(res, 500, 'Failed to retrieve surveyors', err.message);
+    console.error('Admin users error:', err);
+    return errorResponse(res, 500, 'Failed to retrieve users', err.message);
+  }
+};
+
+const updateUserProfile = async (req, res) => {
+  try {
+    const { name, email, role, is_active } = req.body;
+
+    if (!name?.trim()) return errorResponse(res, 400, 'Full name is required');
+    if (!email?.trim()) return errorResponse(res, 400, 'Email is required');
+    if (!['admin', 'surveyor'].includes(String(role || '').toLowerCase())) {
+      return errorResponse(res, 400, 'Role must be either admin or surveyor');
+    }
+    if (typeof is_active !== 'boolean') {
+      return errorResponse(res, 400, 'is_active must be a boolean');
+    }
+
+    const pool = await poolPromise;
+    const roleLookup = await pool.request()
+      .input('p_role_name', sql.NVarChar(30), String(role).toLowerCase())
+      .query('SELECT id FROM quiz.role_master WHERE LOWER(role_name) = @p_role_name');
+
+    if (!roleLookup.recordset?.[0]) {
+      return errorResponse(res, 404, 'Role not found');
+    }
+
+    const result = await pool.request()
+      .input('p_user_id', sql.UniqueIdentifier, req.params.id)
+      .input('p_full_name', sql.NVarChar(255), name.trim())
+      .input('p_email', sql.NVarChar(255), email.trim())
+      .input('p_role_id', sql.Int, roleLookup.recordset[0].id)
+      .input('p_is_active', sql.Bit, is_active)
+      .query(`
+        UPDATE quiz.profiles
+        SET full_name = @p_full_name,
+            email = @p_email,
+            role_id = @p_role_id,
+            is_active = @p_is_active,
+            updated_at = SYSDATETIMEOFFSET()
+        OUTPUT INSERTED.id,
+               INSERTED.full_name AS name,
+               INSERTED.email,
+               INSERTED.is_active,
+               INSERTED.role_id,
+               INSERTED.created_at,
+               INSERTED.updated_at
+        WHERE id = @p_user_id;
+      `);
+
+    if (!result.recordset?.[0]) {
+      return errorResponse(res, 404, 'User not found');
+    }
+
+    const roleNameResult = await pool.request()
+      .input('p_role_id', sql.Int, result.recordset[0].role_id)
+      .query('SELECT role_name AS role FROM quiz.role_master WHERE id = @p_role_id');
+
+    return successResponse(res, 200, 'User updated successfully', {
+      ...result.recordset[0],
+      role: roleNameResult.recordset?.[0]?.role || String(role).toLowerCase()
+    });
+  } catch (err) {
+    console.error('Admin user update error:', err);
+    return errorResponse(res, 500, 'Failed to update user', err.message);
   }
 };
 
@@ -137,6 +226,7 @@ const deleteMasterQuestionBank = (req, res) => manageMasterQuestionBank(req, res
 module.exports = {
   getMetrics,
   getAllSurveyors,
+  updateUserProfile,
   toggleSurveyorStatus,
   getSystemSurveys,
   updateSystemSurveyStatus,
