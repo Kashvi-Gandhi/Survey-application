@@ -1,64 +1,35 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import API from '../services/api';
-import { updateSurvey } from '../services/surveyService';
-import { ArrowLeft, Save } from 'lucide-react';
+import { createSurvey, updateSurvey } from '../services/surveyService';
+import { getQuestionBanks } from '../services/bankService';
+import { ArrowLeft, Save, Plus, Trash2, Database, Copy, LockKeyhole } from 'lucide-react';
+
+const choiceTypes = ['mcq_single', 'mcq_multiple'];
+const types = [['mcq_single', 'MCQ Single Select'], ['mcq_multiple', 'MCQ Multiple Select'], ['true_false', 'True / False'], ['yes_no', 'Yes / No'], ['text', 'Text'], ['numeric', 'Numeric Answer'], ['rating', 'Rating']];
+const parseOptions = (value) => { if (Array.isArray(value)) return value; try { return value ? JSON.parse(value) : []; } catch { return []; } };
+const optionsFor = (type, options = []) => type === 'true_false' ? ['True', 'False'] : type === 'yes_no' ? ['Yes', 'No'] : choiceTypes.includes(type) ? options : [];
+const normalize = (q, index) => ({ question_text: q.question_text || '', question_type: q.question_type || q.type || 'mcq_single', options: parseOptions(q.options), points: q.points ?? 1, is_required: q.is_required ?? true, order_index: index + 1 });
 
 export default function EditSurvey() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [survey, setSurvey] = useState(null);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const loadSurvey = async () => {
-      try {
-        const response = await API.get(`/surveys/${id}`);
-        const data = response.data.data;
-        setSurvey(data);
-        setTitle(data.title || '');
-        setDescription(data.description || '');
-      } catch {
-        setError('Unable to load this survey.');
-      }
-    };
-    loadSurvey();
-  }, [id]);
-
-  const isLocked = survey?.has_responses || Number(survey?.response_count) > 0;
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (isLocked) return;
-    try {
-      setSaving(true);
-      setError('');
-      await updateSurvey(id, { title, description });
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update survey.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
+  const { id } = useParams(); const navigate = useNavigate();
+  const [survey, setSurvey] = useState(null); const [title, setTitle] = useState(''); const [description, setDescription] = useState('');
+  const [questions, setQuestions] = useState([]); const [banks, setBanks] = useState([]); const [selectedBankId, setSelectedBankId] = useState('');
+  const [saving, setSaving] = useState(false); const [error, setError] = useState('');
+  useEffect(() => { (async () => { try {
+    const [surveyResult, bankResult] = await Promise.all([API.get(`/surveys/${id}`), getQuestionBanks()]); const data = surveyResult.data.data;
+    setSurvey(data); setTitle(data.title || ''); setDescription(data.description || ''); setQuestions((data.questions || []).map(normalize));
+    const available = bankResult.data?.data || bankResult.data || []; setBanks(available); setSelectedBankId(available[0]?.id || '');
+  } catch { setError('Unable to load this survey.'); } })(); }, [id]);
+  const locked = survey?.has_responses || Number(survey?.response_count) > 0;
+  const changeQuestion = (index, update) => setQuestions(items => items.map((q, i) => i === index ? { ...q, ...update } : q));
+  const saveQuestions = () => questions.map((q, index) => ({ ...q, options: optionsFor(q.question_type, q.options).map(v => v.trim()).filter(Boolean), order_index: index + 1 }));
+  const invalid = () => questions.some(q => !q.question_text.trim() || (choiceTypes.includes(q.question_type) && q.options.filter(Boolean).length < 2));
+  const submit = async (event) => { event.preventDefault(); if (!locked && invalid()) { setError('Each question needs a prompt; multiple-choice questions need at least two options.'); return; } try { setSaving(true); setError(''); await updateSurvey(id, { title, description, ...(locked ? {} : { questions: saveQuestions() }) }); navigate('/dashboard'); } catch (err) { setError(err.response?.data?.message || 'Failed to update survey.'); } finally { setSaving(false); } };
+  const duplicate = async () => { try { setSaving(true); setError(''); const copyTitle = `${title} (Copy)`; const created = await createSurvey({ title: copyTitle, description }); const newId = created?.data?.id || created?.id; if (!newId) throw new Error('The copied survey ID was not returned.'); await updateSurvey(newId, { title: copyTitle, description, questions: saveQuestions() }); navigate(`/surveys/${newId}/edit`); } catch (err) { setError(err.response?.data?.message || err.message || 'Failed to duplicate survey.'); } finally { setSaving(false); } };
+  const importBank = () => { const bank = banks.find(b => String(b.id) === String(selectedBankId)); const source = bank?.questions || bank?.question_list || []; setQuestions(current => [...current, ...source.map((q, i) => normalize(q, current.length + i))]); };
   if (!survey && !error) return <div className="p-12 text-center text-sm text-slate-400">Loading survey...</div>;
-  if (isLocked) return <Navigate to="/dashboard" replace />;
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"><ArrowLeft className="w-4 h-4" /> Back to dashboard</Link>
-      <div><h1 className="text-2xl font-bold text-slate-900">Edit Survey</h1><p className="text-sm text-slate-500">Update the survey title and participant instructions.</p></div>
-      {error && <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md">{error}</div>}
-      {survey && (
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
-          <div><label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Survey Title</label><input required value={title} onChange={(event) => setTitle(event.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
-          <div><label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Description / Instructions</label><textarea rows="4" value={description} onChange={(event) => setDescription(event.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
-          <div className="flex justify-end"><button disabled={saving} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-md"><Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Changes'}</button></div>
-        </form>
-      )}
-    </div>
-  );
+  return <div className="max-w-3xl mx-auto space-y-6"><Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"><ArrowLeft className="w-4 h-4" /> Back to dashboard</Link><div><h1 className="text-2xl font-bold text-slate-900">Edit Survey</h1><p className="text-sm text-slate-500">Update details and, before responses arrive, questions.</p></div>{error && <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md">{error}</div>}{locked && <div className="flex items-center justify-between gap-3 p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md"><span className="flex items-center gap-2"><LockKeyhole className="w-4 h-4" /> 🔒 Question structure is locked because this survey has received responses.</span><button type="button" disabled={saving} onClick={duplicate} className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-amber-900 bg-white border border-amber-300 rounded"><Copy className="w-3.5 h-3.5" /> Duplicate & Edit</button></div>}{survey && <form onSubmit={submit} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5"><Field label="Survey Title" value={title} onChange={setTitle} required /><Field label="Description / Instructions" value={description} onChange={setDescription} multiline /><section className="pt-3 border-t border-slate-200 space-y-4"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-bold text-slate-800">Questions ({questions.length})</h2>{!locked && <div className="flex flex-wrap gap-2"><select value={selectedBankId} onChange={e => setSelectedBankId(e.target.value)} className="max-w-48 px-2 py-1 text-xs border rounded"><option value="">Question bank</option>{banks.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}</select><button type="button" onClick={importBank} disabled={!selectedBankId} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded disabled:opacity-50"><Database className="w-3.5 h-3.5" /> Import from Question Bank</button><button type="button" onClick={() => setQuestions(q => [...q, normalize({ options: ['', ''] }, q.length)])} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-indigo-600 rounded"><Plus className="w-3.5 h-3.5" /> Add New Question</button></div>}</div>{questions.length === 0 && <p className="text-sm text-slate-500">No questions added yet.</p>}{questions.map((q, i) => <Question key={i} question={q} index={i} locked={locked} change={changeQuestion} remove={() => setQuestions(items => items.filter((_, at) => at !== i))} />)}</section><div className="flex justify-end"><button disabled={saving} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 disabled:opacity-50 text-white text-xs font-semibold rounded-md"><Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Changes'}</button></div></form>}</div>;
 }
+function Field({ label, value, onChange, required, multiline }) { const className = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none'; return <div><label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">{label}</label>{multiline ? <textarea rows="4" value={value} onChange={e => onChange(e.target.value)} className={className} /> : <input required={required} value={value} onChange={e => onChange(e.target.value)} className={className} />}</div>; }
+function Question({ question, index, locked, change, remove }) { const typeChange = type => change(index, { question_type: type, options: optionsFor(type, question.options) }); return <div className="p-4 border border-slate-200 rounded-lg bg-slate-50 space-y-3"><div className="flex gap-3"><span className="text-xs font-bold text-slate-400 pt-2">Q{index + 1}</span><input readOnly={locked} value={question.question_text} onChange={e => change(index, { question_text: e.target.value })} placeholder="Question prompt" className="flex-1 px-3 py-2 text-sm bg-white border rounded" />{!locked && <button type="button" onClick={remove} className="p-2 text-red-500"><Trash2 className="w-4 h-4" /></button>}</div><select disabled={locked} value={question.question_type} onChange={e => typeChange(e.target.value)} className="px-3 py-2 text-sm bg-white border rounded">{types.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{choiceTypes.includes(question.question_type) && <div className="space-y-2">{question.options.map((option, oi) => <input key={oi} readOnly={locked} value={option} onChange={e => change(index, { options: question.options.map((v, at) => at === oi ? e.target.value : v) })} placeholder={`Option ${oi + 1}`} className="block w-full px-3 py-1.5 text-sm bg-white border rounded" />)}{!locked && <button type="button" onClick={() => change(index, { options: [...question.options, ''] })} className="text-xs font-semibold text-indigo-600">+ Add choice option</button>}</div>}{['true_false', 'yes_no'].includes(question.question_type) && <p className="text-xs text-slate-500">Options: {optionsFor(question.question_type).join(', ')}</p>}</div>; }

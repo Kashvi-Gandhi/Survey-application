@@ -307,28 +307,30 @@ const getSurveyById = async (req, res) => {
 const updateSurvey = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description } = req.body;
+    const { title, description, questions } = req.body;
     if (!title?.trim()) return errorResponse(res, 400, 'Survey title is required');
 
-    const pool = await poolPromise;
-    const responseCountResult = await pool.request()
-      .input('p_survey_id', sql.UniqueIdentifier, id)
-      .query('SELECT COUNT(*) AS response_count FROM quiz.responses WHERE survey_id = @p_survey_id');
-
-    if (Number(responseCountResult.recordset[0]?.response_count || 0) > 0) {
-      return errorResponse(res, 400, 'Cannot edit a survey that already has responses.');
+    // Omit `questions` to update metadata only.  Supplying it (including an
+    // empty array) requests a structural synchronization.
+    if (questions !== undefined && !Array.isArray(questions)) {
+      return errorResponse(res, 400, 'questions must be an array when supplied.');
+    }
+    if (questions?.some((question) => !question?.question_text?.trim() || !question?.question_type)) {
+      return errorResponse(res, 400, 'Every question requires question_text and question_type.');
     }
 
+    const pool = await poolPromise;
     const result = await pool.request()
       .input('p_survey_id', sql.UniqueIdentifier, id)
       .input('p_title', sql.NVarChar(255), title.trim())
       .input('p_description', sql.NVarChar(sql.MAX), description?.trim() || null)
+      .input('p_questions_json', sql.NVarChar(sql.MAX), questions === undefined ? null : JSON.stringify(questions))
       .execute('quiz.usp_update_survey');
 
     return successResponse(res, 200, 'Survey updated successfully', result.recordset?.[0] || null);
   } catch (err) {
-    if (err.number === 50002 || err.message?.includes('Cannot edit a survey that already has responses.')) {
-      return errorResponse(res, 400, 'Cannot edit a survey that already has responses.');
+    if (err.number === 50002 || err.message?.includes('Cannot modify questions on a survey with existing responses.')) {
+      return errorResponse(res, 400, 'Cannot modify questions on a survey with existing responses.');
     }
     console.error('Exception in updateSurvey:', err);
     return errorResponse(res, 500, 'Failed to update survey', err.message);

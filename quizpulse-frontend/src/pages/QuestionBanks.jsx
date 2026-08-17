@@ -135,7 +135,7 @@ export default function QuestionBanks() {
             setDrafts([]);
             setEdit(null);
           }}
-          className={`w-full p-3 text-left border-b last:border-0 ${selected?.id === bank.id ? "bg-indigo-50 border-l-4 border-l-indigo-600" : "hover:bg-slate-50"}`}
+          className={`w-full p-3 text-left border-b border-zinc-200 last:border-0 ${selected?.id === bank.id ? "bg-zinc-100 border-l-4 border-l-black" : "hover:bg-zinc-50"}`}
         >
           <div className="flex justify-between gap-2">
             <span className="text-sm font-semibold">{bank.title}</span>
@@ -158,18 +158,18 @@ export default function QuestionBanks() {
 
   return (
     <div className="space-y-6">
-      <header className="flex justify-between gap-4 pb-4 border-b">
+      <header className="flex justify-between gap-4 pb-4 border-b border-zinc-200 text-zinc-900">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Database className="w-6 h-6 text-indigo-600" /> Question Banks
+            <Database className="w-6 h-6" /> Question Banks
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-zinc-600">
             Browse official templates or build reusable question banks.
           </p>
         </div>
         <button
           onClick={() => load(selected?.id)}
-          className="self-start inline-flex gap-1 px-3 py-2 text-xs font-semibold bg-slate-100 border rounded"
+          className="self-start inline-flex gap-1 px-3 py-2 text-xs font-semibold bg-white text-black border border-zinc-200 hover:bg-zinc-100 rounded-md"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Sync Data
         </button>
@@ -181,7 +181,7 @@ export default function QuestionBanks() {
       )}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <aside className="space-y-4">
-          <form onSubmit={create} className="p-4 bg-white border rounded-xl">
+          <form onSubmit={create} className="p-4 bg-white border border-zinc-200 rounded-md">
             <h2 className="mb-3 text-xs font-bold uppercase">
               Create {isAdmin ? "Master Template" : "Custom Bank"}
             </h2>
@@ -191,15 +191,15 @@ export default function QuestionBanks() {
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="New question bank"
-                className="flex-1 px-3 py-1.5 text-sm border rounded"
+                className="flex-1 px-3 py-1.5 text-sm bg-white border border-zinc-200 rounded-md focus:ring-2 focus:ring-black outline-none"
               />
-              <button className="p-2 text-white bg-indigo-600 rounded">
+              <button className="p-2 text-white bg-black hover:bg-zinc-800 rounded-md">
                 <FolderPlus className="w-4 h-4" />
               </button>
             </div>
           </form>
-          <section className="overflow-hidden bg-white border rounded-xl">
-            <h2 className="p-3 text-xs font-bold text-emerald-800 uppercase bg-emerald-50 border-b">
+          <section className="overflow-hidden bg-white border border-zinc-200 rounded-md">
+            <h2 className="p-3 text-xs font-bold text-zinc-900 uppercase bg-zinc-50 border-b border-zinc-200">
               Official Master Question Banks ({masters.length})
             </h2>
             {loading ? (
@@ -208,8 +208,8 @@ export default function QuestionBanks() {
               <BankList items={masters} master />
             )}
           </section>
-          <section className="overflow-hidden bg-white border rounded-xl">
-            <h2 className="p-3 text-xs font-bold text-blue-800 uppercase bg-blue-50 border-b">
+          <section className="overflow-hidden bg-white border border-zinc-200 rounded-md">
+            <h2 className="p-3 text-xs font-bold text-zinc-900 uppercase bg-zinc-50 border-b border-zinc-200">
               {isAdmin ? "Surveyor Question Banks" : "My Custom Banks"} (
               {customs.length})
             </h2>
