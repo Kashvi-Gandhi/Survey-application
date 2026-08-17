@@ -223,7 +223,7 @@ export default function QuestionBanks() {
         <section className="space-y-6 lg:col-span-2">
           {selected ? (
             <>
-              <div className="flex justify-between gap-3 p-4 bg-white border rounded-xl">
+              <div className="flex justify-between gap-3 p-4 bg-white border border-zinc-200 rounded-md">
                 {edit ? (
                   <div className="flex-1 space-y-2">
                     <input
@@ -231,14 +231,14 @@ export default function QuestionBanks() {
                       onChange={(event) =>
                         setEdit({ ...edit, title: event.target.value })
                       }
-                      className="w-full px-3 py-2 text-sm border rounded"
+                      className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-md focus:ring-2 focus:ring-black outline-none"
                     />
                     <textarea
                       value={edit.description}
                       onChange={(event) =>
                         setEdit({ ...edit, description: event.target.value })
                       }
-                      className="w-full px-3 py-2 text-sm border rounded"
+                      className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-md focus:ring-2 focus:ring-black outline-none"
                     />
                   </div>
                 ) : (
@@ -255,13 +255,13 @@ export default function QuestionBanks() {
                       <>
                         <button
                           onClick={saveDetails}
-                          className="px-3 py-1.5 text-xs text-white bg-emerald-600 rounded"
+                          className="px-3 py-1.5 text-xs text-white bg-black hover:bg-zinc-800 rounded-md"
                         >
                           Save
                         </button>
                         <button
                           onClick={() => setEdit(null)}
-                          className="p-1.5 border rounded"
+                          className="p-1.5 bg-white border border-zinc-200 hover:bg-zinc-100 rounded-md"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -275,13 +275,13 @@ export default function QuestionBanks() {
                               description: selected.description || "",
                             })
                           }
-                          className="p-1.5 border rounded"
+                          className="p-1.5 bg-white border border-zinc-200 hover:bg-zinc-100 rounded-md"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={deleteBank}
-                          className="p-1.5 text-red-600 border rounded"
+                          className="p-1.5 text-zinc-900 bg-white border border-zinc-200 hover:bg-zinc-100 rounded-md"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -301,7 +301,7 @@ export default function QuestionBanks() {
                       ])
                     }
                   />
-                  <div className="p-4 bg-white border rounded-xl">
+                  <div className="p-4 bg-white border border-zinc-200 rounded-md">
                     <div className="flex justify-between">
                       <h3 className="text-xs font-bold uppercase">
                         Draft Questions ({drafts.length})
@@ -309,7 +309,7 @@ export default function QuestionBanks() {
                       <button
                         onClick={saveDrafts}
                         disabled={!drafts.length}
-                        className="inline-flex gap-1 px-3 py-2 text-xs text-white bg-emerald-600 rounded disabled:opacity-50"
+                        className="inline-flex gap-1 px-3 py-2 text-xs text-white bg-black hover:bg-zinc-800 rounded-md disabled:opacity-50"
                       >
                         <Save className="w-4 h-4" /> Save All
                       </button>
@@ -330,7 +330,7 @@ export default function QuestionBanks() {
                   </div>
                 </>
               ) : (
-                <div className="p-3 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded">
+                <div className="p-3 text-sm text-zinc-600 bg-zinc-50 border border-zinc-200 rounded-md">
                   Master templates are read-only. Select one when creating an
                   assessment to clone its questions.
                 </div>
@@ -348,7 +348,7 @@ export default function QuestionBanks() {
                     />
                   ))
                 ) : (
-                  <div className="p-8 text-center text-sm text-slate-400 bg-white border border-dashed rounded">
+                  <div className="p-8 text-center text-sm text-zinc-600 bg-white border border-dashed border-zinc-200 rounded-md">
                     <HelpCircle className="w-8 h-8 mx-auto mb-2" />
                     No questions in this bank.
                   </div>
@@ -356,7 +356,7 @@ export default function QuestionBanks() {
               </div>
             </>
           ) : (
-            <div className="p-12 text-center text-slate-400 bg-white border rounded">
+            <div className="p-12 text-center text-zinc-600 bg-white border border-zinc-200 rounded-md">
               Select a question bank to begin.
             </div>
           )}
