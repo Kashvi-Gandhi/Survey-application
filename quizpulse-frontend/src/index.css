@@ -1,1 +1,25 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
+
+/* Align Question Banks with the shared Dashboard/Admin card system. */
+.question-banks-page .bg-white.border {
+  @apply border-slate-200 shadow-sm;
+}
+
+.question-banks-page header {
+  @apply border-slate-200;
+}
+
+/* Bank changes refresh automatically; no manual synchronization control is needed. */
+.question-banks-page header > button {
+  display: none;
+}
+
+.question-banks-page section > h2 {
+  @apply bg-slate-50 text-slate-700 border-slate-200;
+}
+
+.question-banks-page input,
+.question-banks-page textarea,
+.question-banks-page select {
+  @apply border-slate-300;
+}

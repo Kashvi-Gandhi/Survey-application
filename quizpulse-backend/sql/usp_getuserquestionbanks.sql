@@ -14,7 +14,8 @@ BEGIN
         owner_role.role_name AS created_by_role,
         qb.created_by,
         CAST(CASE WHEN qb.is_global = 1 OR LOWER(owner_role.role_name) = 'admin' THEN 1 ELSE 0 END AS BIT) AS is_master,
-        owner.full_name AS owner_name,
+        owner.full_name AS creator_name,
+        owner.email AS creator_email,
         (
             SELECT
                 q.id,
