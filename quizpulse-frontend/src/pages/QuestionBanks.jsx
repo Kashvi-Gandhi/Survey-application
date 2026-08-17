@@ -8,6 +8,8 @@ import {
   Save,
   Trash2,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   createQuestionBank,
@@ -39,12 +41,15 @@ export default function QuestionBanks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [edit, setEdit] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   const mine = (bank) => String(bank?.created_by) === String(user?.id);
   const canManage = (bank) => isAdmin || mine(bank);
   const masters = banks.filter(isMaster);
   const customs = banks.filter(
     (bank) => !isMaster(bank) && (isAdmin || mine(bank)),
   );
+
   const load = async (id) => {
     try {
       setError("");
@@ -62,12 +67,14 @@ export default function QuestionBanks() {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     const pageContainer = document.querySelector("main");
     pageContainer?.classList.add("question-banks-page");
     load();
     return () => pageContainer?.classList.remove("question-banks-page");
   }, []);
+
   const create = async (event) => {
     event.preventDefault();
     if (!title.trim()) return;
@@ -79,6 +86,7 @@ export default function QuestionBanks() {
       setError(err.response?.data?.message || "Failed to create bank.");
     }
   };
+
   const saveDetails = async () => {
     if (!edit?.title?.trim()) return setError("Bank title is required.");
     try {
@@ -89,8 +97,9 @@ export default function QuestionBanks() {
       setError(err.response?.data?.message || "Failed to update bank.");
     }
   };
+
   const deleteBank = async () => {
-    if (!window.confirm(`Delete “${selected.title}” and its questions?`))
+    if (!window.confirm(`Delete "${selected.title}" and its questions?`))
       return;
     try {
       await deleteQuestionBank(selected.id);
@@ -100,6 +109,7 @@ export default function QuestionBanks() {
       setError(err.response?.data?.message || "Failed to delete bank.");
     }
   };
+
   const saveDrafts = async () => {
     if (!drafts.length) return;
     try {
@@ -116,6 +126,7 @@ export default function QuestionBanks() {
       setError(err.response?.data?.message || "Failed to save questions.");
     }
   };
+
   const removeQuestion = async (id) => {
     if (!window.confirm("Delete this question?")) return;
     try {
@@ -125,6 +136,7 @@ export default function QuestionBanks() {
       setError(err.response?.data?.message || "Failed to delete question.");
     }
   };
+
   const BankList = ({ items, master }) =>
     items.length ? (
       items.map((bank) => (
@@ -135,12 +147,16 @@ export default function QuestionBanks() {
             setDrafts([]);
             setEdit(null);
           }}
-          className={`w-full p-3 text-left border-b border-slate-200 last:border-0 ${selected?.id === bank.id ? "bg-indigo-50 border-l-4 border-l-indigo-600" : "hover:bg-slate-50"}`}
+          className={`w-full p-3 text-left border-b border-slate-100 last:border-0 transition-colors ${
+            selected?.id === bank.id
+              ? "bg-teal-50 border-l-4 border-l-teal-600 text-teal-900"
+              : "hover:bg-slate-50 text-slate-700"
+          }`}
         >
-          <div className="flex justify-between gap-2">
+          <div className="flex justify-between gap-2 items-start">
             <span className="text-sm font-semibold">{bank.title}</span>
-            <span className="text-xs text-slate-500">
-              {questionsFor(bank).length} Qs
+            <span className="text-xs text-slate-500 shrink-0">
+              {questionsFor(bank).length}Q
             </span>
           </div>
           {isAdmin && !master && (
@@ -154,166 +170,222 @@ export default function QuestionBanks() {
     ) : (
       <p className="p-4 text-xs text-slate-400">No banks found.</p>
     );
+
   const editable = canManage(selected);
 
   return (
-    <div className="space-y-6">
-      <header className="flex justify-between gap-4 pb-4 border-b border-slate-200 text-slate-900">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Database className="w-6 h-6 text-indigo-600" /> Question Banks
-          </h1>
-          <p className="text-sm text-slate-500">
-            Browse official templates or build reusable question banks.
-          </p>
-        </div>
-        <button
-          onClick={() => load(selected?.id)}
-          className="self-start inline-flex gap-1 px-3 py-2 text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Sync Data
-        </button>
-      </header>
+    <div className="space-y-3">
+      {/* Error Alert */}
       {error && (
-        <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded">
+        <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-2xl">
           {error}
         </div>
       )}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <aside className="space-y-4">
-          <form onSubmit={create} className="p-4 bg-white border border-slate-200/80 rounded-xl">
-            <h2 className="mb-3 text-xs font-bold uppercase">
-              Create {isAdmin ? "Master Template" : "Custom Bank"}
-            </h2>
-            <div className="flex gap-2">
-              <input
-                required
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="New question bank"
-                className="flex-1 px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-              <button className="p-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm">
-                <FolderPlus className="w-4 h-4" />
-              </button>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        
+        {/* LEFT BOX - Create Bank + 2 Lists */}
+        <div className={`lg:col-span-1 ${sidebarOpen ? "block" : "hidden"}`}>
+          <div className="bg-white rounded-2xl shadow-sm shadow-slate-300/40 border border-slate-100 overflow-hidden">
+            
+            {/* Header Section */}
+            <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-50">
+              <h2 className="text-2xl font-bold text-slate-900">Question Banks</h2>
+              <p className="text-xs text-slate-500 mt-1">Select an existing bank to edit it, or start a brand-new one.</p>
             </div>
-          </form>
-          <section className="overflow-hidden bg-white border border-slate-200/80 rounded-xl">
-            <h2 className="p-3 text-xs font-bold text-emerald-700 uppercase bg-emerald-50 border-b border-emerald-200">
-              Official Master Question Banks ({masters.length})
-            </h2>
-            {loading ? (
-              <p className="p-4 text-xs text-slate-400">Loading…</p>
-            ) : (
-              <BankList items={masters} master />
-            )}
-          </section>
-          <section className="overflow-hidden bg-white border border-slate-200/80 rounded-xl">
-            <h2 className="p-3 text-xs font-bold text-indigo-700 uppercase bg-indigo-50 border-b border-indigo-200">
-              {isAdmin ? "Surveyor Question Banks" : "My Custom Banks"} (
-              {customs.length})
-            </h2>
-            {loading ? (
-              <p className="p-4 text-xs text-slate-400">Loading…</p>
-            ) : (
-              <BankList items={customs} />
-            )}
-          </section>
-        </aside>
-        <section className="space-y-6 lg:col-span-2">
+
+            {/* Create Bank Section */}
+            <div className="p-4 border-b border-slate-100">
+              <h3 className="mb-3 text-xs font-bold uppercase text-slate-900">
+                Create {isAdmin ? "Master Template" : "Custom Bank"}
+              </h3>
+              <form onSubmit={create} className="flex gap-2">
+                <input
+                  required
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="New question bank"
+                  className="flex-1 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                />
+                <button
+                  className="p-2.5 text-white bg-[#3B6280] hover:bg-[#2C4B63] rounded-lg shadow-sm transition-colors"
+                  type="submit"
+                >
+                  <FolderPlus className="w-5 h-5" />
+                </button>
+              </form>
+            </div>
+
+            {/* Master Banks Section */}
+            <div className="border-b border-slate-100">
+              <h4 className="p-3 text-xs font-bold text-emerald-700 uppercase bg-emerald-50 border-b border-emerald-100">
+                Master Templates ({masters.length})
+              </h4>
+              <div className="max-h-40 overflow-y-auto">
+                {loading ? (
+                  <p className="p-4 text-xs text-slate-400">Loading…</p>
+                ) : (
+                  <BankList items={masters} master />
+                )}
+              </div>
+            </div>
+
+            {/* Custom Banks Section */}
+            <div>
+              <h4 className="p-3 text-xs font-bold text-sky-700 uppercase bg-sky-50 border-b border-sky-100">
+                {isAdmin ? "Surveyor Banks" : "My Custom Banks"} ({customs.length})
+              </h4>
+              {loading ? (
+                <p className="p-4 text-xs text-slate-400">Loading…</p>
+              ) : (
+                <BankList items={customs} />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT BOX - Question Bank Designer */}
+        <div className="lg:col-span-3">
+          <div className="flex gap-3 mb-3 lg:hidden">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-full transition-colors"
+            >
+              {sidebarOpen ? (
+                <>
+                  <ChevronLeft className="w-4 h-4" /> Collapse
+                </>
+              ) : (
+                <>
+                  <ChevronRight className="w-4 h-4" /> Expand
+                </>
+              )}
+            </button>
+          </div>
+
           {selected ? (
-            <>
-              <div className="flex justify-between gap-3 p-4 bg-white border border-zinc-200 rounded-md">
-                {edit ? (
-                  <div className="flex-1 space-y-2">
-                    <input
-                      value={edit.title}
-                      onChange={(event) =>
-                        setEdit({ ...edit, title: event.target.value })
+            <div className="bg-white rounded-2xl shadow-sm shadow-slate-300/40 border border-slate-100 overflow-hidden">
+              
+              {/* Question Bank Designer Header */}
+              <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-50 border-b border-slate-100">
+                <h2 className="text-2xl font-bold text-slate-900">Question Bank Details</h2>
+                <p className="text-sm text-slate-500 mt-1">Create a new question bank from the editable template.</p>
+              </div>
+
+              {/* Bank Details + Question Form in ONE BOX */}
+              <div className="p-6 space-y-6 border-b border-slate-100">
+                
+                {/* Bank Details */}
+                <div>
+                  {edit ? (
+                    <div className="space-y-3">
+                      <input
+                        value={edit.title}
+                        onChange={(event) =>
+                          setEdit({ ...edit, title: event.target.value })
+                        }
+                        className="w-full px-4 py-2 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                      />
+                      <textarea
+                        value={edit.description}
+                        onChange={(event) =>
+                          setEdit({ ...edit, description: event.target.value })
+                        }
+                        rows="3"
+                        className="w-full px-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{selected.title}</h3>
+                      <p className="text-sm text-slate-500 mt-2">
+                        {selected.description || "No description provided"}
+                      </p>
+                    </div>
+                  )}
+                  {editable && (
+                    <div className="mt-4 flex gap-2">
+                      {edit ? (
+                        <>
+                          <button
+                            onClick={saveDetails}
+                            className="px-4 py-2 text-xs text-white bg-[#3B6280] hover:bg-[#2C4B63] rounded-full transition-colors"
+                          >
+                            Save Changes
+                          </button>
+                          <button
+                            onClick={() => setEdit(null)}
+                            className="p-2 bg-slate-100 border border-slate-200 hover:bg-slate-200 rounded-full transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() =>
+                              setEdit({
+                                title: selected.title,
+                                description: selected.description || "",
+                              })
+                            }
+                            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" /> Edit
+                          </button>
+                          <button
+                            onClick={deleteBank}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium bg-red-100 hover:bg-red-200 text-red-700 rounded-full transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Question Form */}
+                {editable && (
+                  <div className="pt-6 border-t border-slate-100">
+                    <h4 className="text-sm font-bold uppercase text-slate-900 mb-4">Add New Question</h4>
+                    <QuestionForm
+                      bankId={selected.id}
+                      onQuestionAdded={(question) =>
+                        setDrafts((items) => [
+                          ...items,
+                          { ...question, client_id: crypto.randomUUID() },
+                        ])
                       }
-                      className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-md focus:ring-2 focus:ring-black outline-none"
-                    />
-                    <textarea
-                      value={edit.description}
-                      onChange={(event) =>
-                        setEdit({ ...edit, description: event.target.value })
-                      }
-                      className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-md focus:ring-2 focus:ring-black outline-none"
                     />
                   </div>
-                ) : (
-                  <div>
-                    <h2 className="text-lg font-bold">{selected.title}</h2>
-                    <p className="text-xs text-slate-500">
-                      {selected.description || "No description"}
+                )}
+
+                {!editable && (
+                  <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                    <p className="text-sm text-teal-900 font-medium">
+                      Master templates are read-only. Select one when creating an assessment to clone its questions.
                     </p>
                   </div>
                 )}
-                {editable && (
-                  <div className="flex gap-2">
-                    {edit ? (
-                      <>
-                        <button
-                          onClick={saveDetails}
-                          className="px-3 py-1.5 text-xs text-white bg-black hover:bg-zinc-800 rounded-md"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEdit(null)}
-                          className="p-1.5 bg-white border border-zinc-200 hover:bg-zinc-100 rounded-md"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() =>
-                            setEdit({
-                              title: selected.title,
-                              description: selected.description || "",
-                            })
-                          }
-                          className="p-1.5 bg-white border border-zinc-200 hover:bg-zinc-100 rounded-md"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={deleteBank}
-                          className="p-1.5 text-zinc-900 bg-white border border-zinc-200 hover:bg-zinc-100 rounded-md"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
-              {editable ? (
-                <>
-                  <QuestionForm
-                    bankId={selected.id}
-                    onQuestionAdded={(question) =>
-                      setDrafts((items) => [
-                        ...items,
-                        { ...question, client_id: crypto.randomUUID() },
-                      ])
-                    }
-                  />
-                  <div className="p-4 bg-white border border-zinc-200 rounded-md">
-                    <div className="flex justify-between">
-                      <h3 className="text-xs font-bold uppercase">
-                        Draft Questions ({drafts.length})
-                      </h3>
-                      <button
-                        onClick={saveDrafts}
-                        disabled={!drafts.length}
-                        className="inline-flex gap-1 px-3 py-2 text-xs text-white bg-black hover:bg-zinc-800 rounded-md disabled:opacity-50"
-                      >
-                        <Save className="w-4 h-4" /> Save All
-                      </button>
-                    </div>
+
+              {/* Drafts Section (if any) */}
+              {drafts.length > 0 && (
+                <div className="p-6 border-b border-slate-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-sm font-bold uppercase text-slate-900">
+                      Draft Questions ({drafts.length})
+                    </h4>
+                    <button
+                      onClick={saveDrafts}
+                      className="inline-flex gap-2 px-4 py-2 text-xs font-medium text-white bg-[#3B6280] hover:bg-[#2C4B63] rounded-full transition-colors"
+                    >
+                      <Save className="w-4 h-4" /> Save All
+                    </button>
+                  </div>
+                  <div className="space-y-3">
                     {drafts.map((question) => (
                       <QuestionCard
                         key={question.client_id}
@@ -328,39 +400,39 @@ export default function QuestionBanks() {
                       />
                     ))}
                   </div>
-                </>
-              ) : (
-                <div className="p-3 text-sm text-zinc-600 bg-zinc-50 border border-zinc-200 rounded-md">
-                  Master templates are read-only. Select one when creating an
-                  assessment to clone its questions.
                 </div>
               )}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold uppercase">
+
+              {/* Existing Questions */}
+              <div className="p-6">
+                <h4 className="text-sm font-bold uppercase text-slate-900 mb-4">
                   Existing Questions ({questionsFor(selected).length})
-                </h3>
+                </h4>
                 {questionsFor(selected).length ? (
-                  questionsFor(selected).map((question, index) => (
-                    <QuestionCard
-                      key={question.id || index}
-                      question={question}
-                      onDelete={editable ? removeQuestion : undefined}
-                    />
-                  ))
+                  <div className="space-y-3">
+                    {questionsFor(selected).map((question, index) => (
+                      <QuestionCard
+                        key={question.id || index}
+                        question={question}
+                        onDelete={editable ? removeQuestion : undefined}
+                      />
+                    ))}
+                  </div>
                 ) : (
-                  <div className="p-8 text-center text-sm text-zinc-600 bg-white border border-dashed border-zinc-200 rounded-md">
-                    <HelpCircle className="w-8 h-8 mx-auto mb-2" />
-                    No questions in this bank.
+                  <div className="p-8 text-center text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-lg">
+                    <HelpCircle className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                    <p className="text-sm font-medium">No questions in this bank</p>
                   </div>
                 )}
               </div>
-            </>
+            </div>
           ) : (
-            <div className="p-12 text-center text-zinc-600 bg-white border border-zinc-200 rounded-md">
-              Select a question bank to begin.
+            <div className="bg-white rounded-2xl p-12 shadow-sm shadow-slate-300/40 border border-slate-100 text-center">
+              <Database className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <p className="text-slate-600 font-medium">Select a question bank to begin</p>
             </div>
           )}
-        </section>
+        </div>
       </div>
     </div>
   );

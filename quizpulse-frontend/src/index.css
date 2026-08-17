@@ -1,8 +1,28 @@
 @import "tailwindcss";
 
+/* ============================================
+   FLOATING CANVAS DESIGN SYSTEM
+   ============================================ */
+
+html,
+body {
+  @apply bg-gradient-to-b from-[#EAEFEF] via-[#E2E9F0] to-[#E2E8F0];
+  min-height: 100vh;
+}
+
+/* Root app container - soft pastel canvas */
+#root {
+  @apply min-h-screen bg-gradient-to-b from-[#EAEFEF] via-[#E2E9F0] to-[#E2E8F0];
+}
+
+/* Main page layout with outer canvas padding */
+main {
+  @apply p-6 lg:p-8;
+}
+
 /* Align Question Banks with the shared Dashboard/Admin card system. */
 .question-banks-page .bg-white.border {
-  @apply border-slate-200 shadow-sm;
+  @apply border-slate-100 shadow-sm;
 }
 
 .question-banks-page header {
@@ -15,11 +35,11 @@
 }
 
 .question-banks-page section > h2 {
-  @apply bg-slate-50 text-slate-700 border-slate-200;
+  @apply bg-slate-50 text-slate-700 border-slate-100;
 }
 
 .question-banks-page input,
 .question-banks-page textarea,
 .question-banks-page select {
-  @apply border-slate-300;
+  @apply border-slate-200;
 }

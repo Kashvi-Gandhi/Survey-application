@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { loginUser } from '../services/authService';
@@ -30,81 +30,89 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg border border-slate-200">
-        
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center p-3 bg-indigo-100 rounded-full text-indigo-600 mb-3">
-            <LogIn className="w-8 h-8" />
+    <div className="min-h-screen bg-gradient-to-b from-[#EAEFEF] via-[#E2E9F0] to-[#E2E8F0] flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-sm shadow-slate-300/40 border border-slate-100 overflow-hidden">
+          
+          {/* Header Section */}
+          <div className="px-6 py-8 bg-gradient-to-r from-slate-50 to-slate-50 border-b border-slate-100 text-center space-y-3">
+            <div className="inline-flex items-center justify-center p-3.5 bg-teal-100 rounded-2xl text-teal-700">
+              <LogIn className="w-6 h-6" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Sign in to Assessment Portal</h1>
+            <p className="text-sm text-slate-600">Access your question banks, surveys, and evaluation metrics</p>
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Sign in to Assessment Portal
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Access your question banks, surveys, and evaluation metrics
-          </p>
-        </div>
 
-        {error && (
-          <div className="flex items-center gap-2 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+          {/* Content Section */}
+          <div className="p-6 space-y-6">
+            
+            {/* Error Alert */}
+            {error && (
+              <div className="flex items-center gap-2 p-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
-        <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="w-5 h-5 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="surveyor2@quizpulse.com"
-                className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-              />
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-bold text-slate-900 uppercase tracking-wide mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="w-5 h-5 absolute left-4 top-3 text-slate-400" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="surveyor@example.com"
+                    className="w-full pl-12 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-bold text-slate-900 uppercase tracking-wide mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="w-5 h-5 absolute left-4 top-3 text-slate-400" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-12 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 px-4 bg-[#3B6280] hover:bg-[#2C4B63] text-white font-semibold text-sm rounded-lg shadow-sm transition-colors duration-150 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? 'Authenticating...' : 'Sign In'}
+              </button>
+            </form>
+
+            {/* Signup Link */}
+            <div className="pt-4 border-t border-slate-100 text-center">
+              <p className="text-sm text-slate-600">
+                Don't have an account?{' '}
+                <Link to="/register" className="font-semibold text-teal-700 hover:text-teal-800 transition-colors">
+                  Create Account
+                </Link>
+              </p>
             </div>
           </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="w-5 h-5 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-md shadow-sm transition-colors duration-150 disabled:opacity-50 cursor-pointer flex justify-center items-center"
-          >
-            {loading ? 'Authenticating...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="text-center pt-2 border-t border-slate-100">
-          <p className="text-xs text-slate-500">
-            Don't have an account?{' '}
-            <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-500">
-              Create Account
-            </Link>
-          </p>
         </div>
-
       </div>
     </div>
   );

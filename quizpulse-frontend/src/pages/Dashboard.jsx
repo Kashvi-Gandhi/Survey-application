@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import API from '../services/api';
 import { deleteSurvey } from '../services/surveyService';
-import { LayoutDashboard, PlusCircle, ExternalLink, BarChart2, Database, ClipboardList, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, ExternalLink, BarChart2, Trash2, ClipboardList } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
   const [surveys, setSurveys] = useState([]);
@@ -33,90 +33,122 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="space-y-6 text-slate-900">
-      
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-2xl font-medium text-slate-900 flex items-center gap-2">
-            <LayoutDashboard className="w-6 h-6 text-indigo-600" /> Assessment Dashboard
-          </h1>
-          <p className="text-sm text-slate-500">Overview of active surveys, question repositories, and response metrics.</p>
+    <div className="space-y-6">
+      {/* Single Table Block - Floating Card */}
+      <div className="bg-white rounded-3xl shadow-sm shadow-slate-300/40 border border-slate-100 overflow-hidden">
+        
+        {/* Table Header with Title & Description */}
+        <div className="px-6 py-5 bg-gradient-to-r from-slate-50 via-slate-50 to-slate-50 border-b border-slate-150">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2.5 rounded-xl bg-teal-100">
+              <ClipboardList className="w-5 h-5 text-teal-700" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Active Surveys</h2>
+              <p className="text-sm text-slate-500 mt-0.5">View, edit, and manage all your active assessment surveys</p>
+            </div>
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          <Link
-            to="/banks"
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-lg transition-colors"
-          >
-            <Database className="w-4 h-4" /> Question Banks
-          </Link>
-          <Link
-            to="/create-survey"
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg shadow-sm transition-colors"
-          >
-            <PlusCircle className="w-4 h-4" /> New Survey
-          </Link>
-        </div>
-      </div>
-
-      {/* Published Surveys Table */}
-      <div className="bg-white rounded-xl border border-slate-200/80 overflow-hidden">
-        <div className="p-4 bg-slate-50 border-b border-slate-200/80 flex justify-between items-center">
-          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <ClipboardList className="w-4 h-4 text-indigo-600" /> Active Assessment Surveys ({surveys.length})
-          </h2>
-        </div>
-
+        {/* Table */}
         {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500">Loading surveys...</div>
+          <div className="p-12 text-center text-sm text-slate-500">Loading surveys...</div>
         ) : surveys.length === 0 ? (
-          <div className="p-12 text-center text-sm text-slate-500">
-            No active surveys created yet. Click <strong>"New Survey"</strong> to create one.
+          <div className="p-12 text-center">
+            <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-sm text-slate-500 font-medium">No surveys found</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-200">
-            {surveys.map((survey) => (
-              <div key={survey.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
-                <div>
-                  <h3 className="text-sm font-medium text-slate-900">{survey.title}</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{survey.description || 'No description provided'}</p>
-                  <span className="inline-block mt-2 text-[10px] bg-indigo-50 border border-indigo-200 text-indigo-700 px-2 py-0.5 rounded-lg">
-                    ID: {survey.id}
-                  </span>
-                </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest text-slate-700 w-1/4">
+                    Survey Title
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest text-slate-700 w-1/5">
+                    Description
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest text-slate-700 w-1/2">
+                    Survey ID
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-widest text-slate-700 w-auto">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {surveys.map((survey) => (
+                  <tr 
+                    key={survey.id} 
+                    className="hover:bg-gradient-to-r hover:from-teal-50/30 hover:to-blue-50/30 transition-colors duration-200 border-b border-slate-50"
+                  >
+                    {/* Survey Title */}
+                    <td className="px-6 py-4 text-sm font-bold text-slate-900">
+                      {survey.title}
+                    </td>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link to={`/surveys/${survey.id}/edit`} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-                    <Pencil className="w-3.5 h-3.5" /> Edit Survey
-                  </Link>
-                  <Link
-                    to={`/survey/${survey.id}`}
-                    target="_blank"
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" /> Public Link
-                  </Link>
-                  <Link
-                    to={`/analytics/${survey.id}`}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"
-                  >
-                    <BarChart2 className="w-3.5 h-3.5" /> Analytics
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteSurvey(survey)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+                    {/* Description */}
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      <span className="line-clamp-1">
+                        {survey.description || '—'}
+                      </span>
+                    </td>
+
+                    {/* ID */}
+                    <td className="px-6 py-4 text-xs text-slate-500 font-mono bg-slate-50 rounded-lg">
+                      <code className="text-slate-600">{survey.id}</code>
+                    </td>
+
+                    {/* Actions - Icon Buttons */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center gap-3">
+                        {/* Edit */}
+                        <Link
+                          to={`/surveys/${survey.id}/edit`}
+                          className="p-2.5 bg-blue-100/70 hover:bg-blue-200 text-blue-700 rounded-full transition-all duration-200 shadow-sm hover:shadow-md"
+                          title="Edit Survey"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Link>
+
+                        {/* Public Link */}
+                        <Link
+                          to={`/survey/${survey.id}`}
+                          target="_blank"
+                          className="p-2.5 bg-green-100/70 hover:bg-green-200 text-green-700 rounded-full transition-all duration-200 shadow-sm hover:shadow-md"
+                          title="Open Public Link"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Link>
+
+                        {/* Analytics */}
+                        <Link
+                          to={`/analytics/${survey.id}`}
+                          className="p-2.5 bg-amber-100/70 hover:bg-amber-200 text-amber-700 rounded-full transition-all duration-200 shadow-sm hover:shadow-md"
+                          title="View Analytics"
+                        >
+                          <BarChart2 className="w-4 h-4" />
+                        </Link>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSurvey(survey)}
+                          className="p-2.5 bg-red-100/70 hover:bg-red-200 text-red-700 rounded-full transition-all duration-200 shadow-sm hover:shadow-md"
+                          title="Delete Survey"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
-
     </div>
   );
 }

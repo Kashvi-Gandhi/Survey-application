@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { User, Mail, Lock, ShieldCheck, UserPlus, AlertCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ export default function Register() {
     fullName: '',
     email: '',
     password: '',
-    role: 'surveyor' // 🚨 FIX 1: Set default role to 'surveyor'
+    role: 'surveyor'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,7 +45,6 @@ export default function Register() {
         role: formData.role
       };
 
-      // Always include password if present
       if (formData.password) {
         registrationData.password = formData.password;
       }
@@ -62,113 +61,133 @@ export default function Register() {
   const isStudentRole = formData.role === 'taker';
 
   return (
-    <div className="max-w-md mx-auto my-8 bg-white p-8 rounded-xl border border-slate-200 shadow-md space-y-6">
-      <div className="text-center space-y-1">
-        <div className="inline-flex p-3 bg-indigo-50 text-indigo-600 rounded-full mb-2">
-          <UserPlus className="w-6 h-6" />
-        </div>
-        <h1 className="text-2xl font-bold text-slate-900">Create Portal Account</h1>
-        <p className="text-xs text-slate-500">Sign up to build, host, and evaluate assessments</p>
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 p-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Account Role
-          </label>
-          <div className="relative">
-            <ShieldCheck className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-            >
-              <option value="surveyor">Instructor / Surveyor</option>
-              <option value="taker">Student / Survey Taker</option>
-            </select>
+    <div className="min-h-screen bg-gradient-to-b from-[#EAEFEF] via-[#E2E9F0] to-[#E2E8F0] flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-sm shadow-slate-300/40 border border-slate-100 overflow-hidden">
+          
+          {/* Header Section */}
+          <div className="px-6 py-8 bg-gradient-to-r from-slate-50 to-slate-50 border-b border-slate-100 text-center space-y-3">
+            <div className="inline-flex items-center justify-center p-3.5 bg-teal-100 rounded-2xl text-teal-700">
+              <UserPlus className="w-6 h-6" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Create Portal Account</h1>
+            <p className="text-sm text-slate-600">Sign up to build, host, and evaluate assessments</p>
           </div>
-        </div>
 
-        <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Full Name
-          </label>
-          <div className="relative">
-            <User className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-            <input
-              type="text"
-              name="fullName"
-              required
-              value={formData.fullName}
-              onChange={handleChange}
-              placeholder="e.g. Kashvi Gandhi"
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-          </div>
-        </div>
+          {/* Content Section */}
+          <div className="p-6 space-y-6">
+            
+            {/* Error Alert */}
+            {error && (
+              <div className="flex items-center gap-2 p-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
-        <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Email Address
-          </label>
-          <div className="relative">
-            <Mail className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-            <input
-              type="email"
-              name="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="name@example.com"
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-          </div>
-        </div>
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              
+              {/* Account Role */}
+              <div>
+                <label className="block text-xs font-bold text-slate-900 uppercase tracking-wide mb-2">
+                  Account Role
+                </label>
+                <div className="relative">
+                  <ShieldCheck className="w-5 h-5 absolute left-4 top-3 text-slate-400" />
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className="w-full pl-12 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                  >
+                    <option value="surveyor">Instructor / Surveyor</option>
+                    <option value="taker">Student / Survey Taker</option>
+                  </select>
+                </div>
+              </div>
 
-        {/* 🚨 FIX 2: Password input renders now because role is initialized to 'surveyor' */}
-        {!isStudentRole && (
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="password"
-                name="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-900 uppercase tracking-wide mb-2">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <User className="w-5 h-5 absolute left-4 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    name="fullName"
+                    required
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    placeholder="e.g. Kashvi Gandhi"
+                    className="w-full pl-12 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-bold text-slate-900 uppercase tracking-wide mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="w-5 h-5 absolute left-4 top-3 text-slate-400" />
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="name@example.com"
+                    className="w-full pl-12 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Password - Only for non-student roles */}
+              {!isStudentRole && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-900 uppercase tracking-wide mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-5 h-5 absolute left-4 top-3 text-slate-400" />
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="••••••••"
+                      className="w-full pl-12 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 px-4 bg-[#3B6280] hover:bg-[#2C4B63] text-white font-semibold text-sm rounded-lg shadow-sm transition-colors duration-150 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? 'Creating Account...' : 'Register Account'}
+              </button>
+            </form>
+
+            {/* Signin Link */}
+            <div className="pt-4 border-t border-slate-100 text-center">
+              <p className="text-sm text-slate-600">
+                Already have an account?{' '}
+                <Link to="/login" className="font-semibold text-teal-700 hover:text-teal-800 transition-colors">
+                  Sign In
+                </Link>
+              </p>
             </div>
           </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-md shadow transition-colors cursor-pointer disabled:opacity-50 mt-2"
-        >
-          {loading ? 'Creating Account...' : 'Register Account'}
-        </button>
-      </form>
-
-      <p className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100">
-        Already have an account?{' '}
-        <Link to="/login" className="text-indigo-600 font-semibold hover:underline">
-          Sign In
-        </Link>
-      </p>
+        </div>
+      </div>
     </div>
   );
 }
