@@ -1,259 +1,38 @@
-﻿import React, { useState, useEffect } from 'react';
-import { getQuestionBanks, createQuestionBank } from '../services/bankService';
+import React, { useEffect, useState } from 'react';
+import { Database, FolderPlus, HelpCircle, Pencil, RefreshCw, Save, Trash2, X } from 'lucide-react';
+import { createQuestionBank, deleteQuestionBank, getQuestionBanks, updateQuestionBank } from '../services/bankService';
 import { createQuestionsBatch, deleteQuestion } from '../services/surveyService';
+import { useAuth } from '../context/AuthContext';
 import QuestionCard from '../components/questions/QuestionCard';
 import QuestionForm from '../components/questions/QuestionForm';
-import { Database, FolderPlus, HelpCircle, RefreshCw, Save } from 'lucide-react';
+
+const questionsFor = (bank) => Array.isArray(bank?.questions) ? bank.questions : Array.isArray(bank?.question_list) ? bank.question_list : [];
+const isMaster = (bank) => bank?.is_global === true || Number(bank?.is_global) === 1 || String(bank?.created_by_role || '').toLowerCase() === 'admin';
 
 export default function QuestionBanks() {
-  const [banks, setBanks] = useState([]);
-  const [selectedBank, setSelectedBank] = useState(null);
-  const [newBankTitle, setNewBankTitle] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [creatingBank, setCreatingBank] = useState(false);
-  const [draftQuestions, setDraftQuestions] = useState([]);
-  const [savingDrafts, setSavingDrafts] = useState(false);
+  const { user, isAdmin } = useAuth();
+  const [banks, setBanks] = useState([]); const [selectedBank, setSelectedBank] = useState(null); const [newBankTitle, setNewBankTitle] = useState('');
+  const [loading, setLoading] = useState(true); const [creatingBank, setCreatingBank] = useState(false); const [draftQuestions, setDraftQuestions] = useState([]); const [savingDrafts, setSavingDrafts] = useState(false);
+  const [editing, setEditing] = useState(false); const [editValues, setEditValues] = useState({ title: '', description: '' }); const [error, setError] = useState('');
+  const mine = (bank) => String(bank?.created_by) === String(user?.id);
+  const canManage = (bank) => isAdmin || mine(bank);
+  const masterBanks = banks.filter(isMaster);
+  const customBanks = banks.filter((bank) => !isMaster(bank) && mine(bank));
 
-  const fetchBanks = async (keepSelectedId = null) => {
-    try {
-      const res = await getQuestionBanks();
-      const loadedBanks = res.data || [];
-      setBanks(loadedBanks);
-
-      if (loadedBanks.length > 0) {
-        const targetId = keepSelectedId || selectedBank?.id || loadedBanks[0].id;
-        const current = loadedBanks.find((b) => b.id === targetId) || loadedBanks[0];
-        // Ensure state updates with fresh nested questions!
-        setSelectedBank(current); 
-      }
-    } catch (err) {
-      console.error('Failed to fetch question banks:', err);
-    } finally {
-      setLoading(false);
-    }
+  const fetchBanks = async (keepId) => {
+    try { setError(''); const response = await getQuestionBanks(); const loaded = response.data || []; setBanks(loaded); setSelectedBank(loaded.find((bank) => bank.id === (keepId || selectedBank?.id)) || loaded[0] || null); }
+    catch (err) { setError(err.response?.data?.message || 'Failed to fetch question banks.'); }
+    finally { setLoading(false); }
   };
+  useEffect(() => { fetchBanks(); }, []);
+  const createBank = async (event) => { event.preventDefault(); if (!newBankTitle.trim()) return; try { setCreatingBank(true); const response = await createQuestionBank({ title: newBankTitle }); setNewBankTitle(''); setDraftQuestions([]); await fetchBanks(response.data?.id); } catch (err) { setError(err.response?.data?.message || 'Failed to create question bank.'); } finally { setCreatingBank(false); } };
+  const saveDetails = async () => { if (!editValues.title.trim()) return setError('Bank title is required.'); try { const response = await updateQuestionBank(selectedBank.id, editValues); const updated = { ...selectedBank, ...(response.data || {}), ...editValues }; setSelectedBank(updated); setBanks((items) => items.map((bank) => bank.id === updated.id ? updated : bank)); setEditing(false); } catch (err) { setError(err.response?.data?.message || 'Failed to update question bank.'); } };
+  const removeBank = async () => { if (!window.confirm(`Delete “${selectedBank.title}” and its questions?`)) return; try { await deleteQuestionBank(selectedBank.id); setDraftQuestions([]); await fetchBanks(); } catch (err) { setError(err.response?.data?.message || 'Failed to delete question bank.'); } };
+  const saveQuestions = async () => { if (!draftQuestions.length) return; try { setSavingDrafts(true); await createQuestionsBatch(null, draftQuestions.map(({ client_id, type, ...question }) => ({ ...question, question_type: type }))); setDraftQuestions([]); await fetchBanks(selectedBank.id); } catch (err) { setError(err.response?.data?.message || 'Failed to save questions.'); } finally { setSavingDrafts(false); } };
+  const removeQuestion = async (id) => { if (!window.confirm('Delete this question?')) return; try { await deleteQuestion(id); await fetchBanks(selectedBank.id); } catch (err) { setError(err.response?.data?.message || 'Failed to delete question.'); } };
+  const selectBank = (bank) => { setSelectedBank(bank); setDraftQuestions([]); setEditing(false); setError(''); };
+  const BankItem = ({ bank, master }) => <button onClick={() => selectBank(bank)} className={`w-full p-3 text-left border-b last:border-b-0 ${selectedBank?.id === bank.id ? 'bg-indigo-50 border-l-4 border-l-indigo-600' : 'hover:bg-slate-50'}`}><div className="flex justify-between gap-2"><span className="text-sm font-semibold text-slate-800">{bank.title}</span><span className="text-xs text-slate-500">{questionsFor(bank).length} Qs</span></div><span className={`inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${master ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{master ? '🟢 MASTER TEMPLATE' : '👤 MY BANK'}</span></button>;
+  const editable = canManage(selectedBank); const currentQuestions = questionsFor(selectedBank);
 
-  useEffect(() => {
-    fetchBanks();
-  }, []);
-
-  const handleCreateBank = async (e) => {
-    e.preventDefault();
-    if (!newBankTitle.trim()) return;
-
-    try {
-      setCreatingBank(true);
-      const res = await createQuestionBank({ title: newBankTitle });
-      setNewBankTitle('');
-      setDraftQuestions([]);
-      const newBankId = res.data?.id;
-      await fetchBanks(newBankId);
-    } catch (err) {
-      console.error('Error creating bank via stored procedure:', err);
-    } finally {
-      setCreatingBank(false);
-    }
-  };
-
-  const handleAddQuestion = (questionPayload) => {
-    setDraftQuestions((current) => [...current, {
-      ...questionPayload,
-      client_id: crypto.randomUUID()
-    }]);
-  };
-
-  const handleSaveAllQuestions = async () => {
-    if (!selectedBank || draftQuestions.length === 0) return;
-
-    try {
-      setSavingDrafts(true);
-      await createQuestionsBatch(null, draftQuestions.map(({ client_id, type, ...question }) => ({
-        ...question,
-        question_type: type
-      })));
-      setDraftQuestions([]);
-      await fetchBanks(selectedBank.id);
-    } catch (err) {
-      console.error('Error saving question batch:', err);
-      alert(err.response?.data?.message || 'Failed to save question batch. Please check backend logs.');
-    } finally {
-      setSavingDrafts(false);
-    }
-  };
-
-  const handleDeleteDraft = (clientId) => {
-    setDraftQuestions((current) => current.filter((question) => question.client_id !== clientId));
-  };
-
-  const handleDeleteSavedQuestion = async (questionId) => {
-    if (!window.confirm('Delete this question and all of its associated responses? This cannot be undone.')) return;
-    try {
-      await deleteQuestion(questionId);
-      await fetchBanks(selectedBank?.id);
-    } catch (err) {
-      console.error('Error deleting question:', err);
-      alert(err.response?.data?.message || 'Failed to delete question. Please try again.');
-    }
-  };
-
-  const handleBankSelection = (bank) => {
-    setSelectedBank(bank);
-    setDraftQuestions([]);
-  };
-
-  // Helper to extract questions list safely across different payload schemas
-  const getQuestionsList = (bank) => {
-    if (!bank) return [];
-    if (Array.isArray(bank.questions)) return bank.questions;
-    if (Array.isArray(bank.question_list)) return bank.question_list;
-    return [];
-  };
-
-  const currentQuestions = getQuestionsList(selectedBank);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Database className="w-6 h-6 text-indigo-600" /> Question Banks
-          </h1>
-          <p className="text-sm text-slate-500">Organize and construct question repositories for assessment surveys</p>
-        </div>
-
-        <button
-          onClick={() => fetchBanks(selectedBank?.id)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-md border border-slate-200"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Sync Data
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Sidebar: Bank List & Creator */}
-        <div className="space-y-4">
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Create Question Bank</h2>
-            <form onSubmit={handleCreateBank} className="flex gap-2">
-              <input
-                type="text"
-                required
-                placeholder="e.g., CS101 Midterm Prep"
-                value={newBankTitle}
-                onChange={(e) => setNewBankTitle(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-              <button
-                type="submit"
-                disabled={creatingBank}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-medium transition-colors shrink-0"
-              >
-                <FolderPlus className="w-4 h-4" />
-              </button>
-            </form>
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-3 bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Available Repositories ({banks.length})
-            </div>
-
-            <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-              {loading ? (
-                <div className="p-4 text-center text-xs text-slate-400">Loading banks...</div>
-              ) : banks.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-400">No question banks found.</div>
-              ) : (
-                banks.map((bank) => {
-                  const qCount = getQuestionsList(bank).length;
-                  return (
-                    <button
-                      key={bank.id}
-                      onClick={() => handleBankSelection(bank)}
-                      className={`w-full text-left p-3 text-sm transition-colors flex items-center justify-between ${
-                        selectedBank?.id === bank.id
-                          ? 'bg-indigo-50 text-indigo-700 font-semibold border-l-4 border-indigo-600'
-                          : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span>{bank.title}</span>
-                      <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-normal">
-                        {qCount} Qs
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Content Area */}
-        <div className="lg:col-span-2 space-y-6">
-          {selectedBank ? (
-            <>
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">{selectedBank.title}</h2>
-                  <p className="text-xs text-slate-500">Bank ID: {selectedBank.id}</p>
-                </div>
-              </div>
-
-              {/* Dynamic Question Builder Form */}
-              <QuestionForm bankId={selectedBank.id} onQuestionAdded={handleAddQuestion} />
-
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Draft Questions ({draftQuestions.length})</h3>
-                    <p className="text-xs text-slate-500 mt-1">Review drafts before saving them to this bank.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSaveAllQuestions}
-                    disabled={savingDrafts || draftQuestions.length === 0}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-md shadow transition-colors disabled:opacity-50"
-                  >
-                    <Save className="w-4 h-4" /> {savingDrafts ? 'Saving All...' : 'Save All Questions'}
-                  </button>
-                </div>
-
-                {draftQuestions.length === 0 ? (
-                  <p className="text-xs text-slate-400">Questions added with the form will appear here.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {draftQuestions.map((question) => (
-                      <QuestionCard key={question.client_id} question={question} onDelete={() => handleDeleteDraft(question.client_id)} />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* List of Questions in Bank */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Existing Questions ({currentQuestions.length})
-                </h3>
-
-                {currentQuestions.length === 0 ? (
-                  <div className="p-8 text-center bg-white border border-dashed border-slate-300 rounded-xl text-slate-400 text-sm">
-                    <HelpCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    No questions added to this bank yet. Use the builder above to add questions.
-                  </div>
-                ) : (
-                  currentQuestions.map((q, idx) => (
-                    <QuestionCard key={q.id || idx} question={q} onDelete={handleDeleteSavedQuestion} />
-                  ))
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="p-12 text-center bg-white border border-slate-200 rounded-xl text-slate-400 text-sm">
-              Select or create a question bank on the left to start adding questions.
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="space-y-6"><header className="flex flex-col sm:flex-row justify-between gap-4 pb-4 border-b"><div><h1 className="flex items-center gap-2 text-2xl font-bold"><Database className="w-6 h-6 text-indigo-600" /> Question Banks</h1><p className="text-sm text-slate-500">Browse official templates or build your own reusable question banks.</p></div><button onClick={() => fetchBanks(selectedBank?.id)} className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-100 border rounded-md"><RefreshCw className="w-3.5 h-3.5" /> Sync Data</button></header>{error && <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md">{error}</div>}<div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><aside className="space-y-4"><div className="p-4 bg-white border rounded-xl"><h2 className="mb-3 text-xs font-bold uppercase">Create {isAdmin ? 'Master Template' : 'Custom Bank'}</h2><form onSubmit={createBank} className="flex gap-2"><input required value={newBankTitle} onChange={(event) => setNewBankTitle(event.target.value)} placeholder="New question bank" className="flex-1 px-3 py-1.5 text-sm border rounded-md" /><button disabled={creatingBank} className="px-3 py-1.5 text-white bg-indigo-600 rounded-md"><FolderPlus className="w-4 h-4" /></button></form></div><section className="bg-white border rounded-xl overflow-hidden"><h2 className="p-3 text-xs font-bold text-emerald-800 uppercase bg-emerald-50 border-b">Official Master Question Banks ({masterBanks.length})</h2>{loading ? <p className="p-4 text-xs text-slate-400">Loading banks...</p> : masterBanks.length ? masterBanks.map((bank) => <BankItem key={bank.id} bank={bank} master />) : <p className="p-4 text-xs text-slate-400">No official templates available.</p>}</section><section className="bg-white border rounded-xl overflow-hidden"><h2 className="p-3 text-xs font-bold text-blue-800 uppercase bg-blue-50 border-b">My Custom Banks ({customBanks.length})</h2>{loading ? <p className="p-4 text-xs text-slate-400">Loading banks...</p> : customBanks.length ? customBanks.map((bank) => <BankItem key={bank.id} bank={bank} />) : <p className="p-4 text-xs text-slate-400">You have not created a custom bank yet.</p>}</section></aside><section className="space-y-6 lg:col-span-2">{selectedBank ? <><div className="flex justify-between gap-3 p-4 bg-white border rounded-xl">{editing ? <div className="flex-1 space-y-2"><input value={editValues.title} onChange={(event) => setEditValues({ ...editValues, title: event.target.value })} className="w-full px-3 py-2 text-sm border rounded" /><textarea value={editValues.description} onChange={(event) => setEditValues({ ...editValues, description: event.target.value })} className="w-full px-3 py-2 text-sm border rounded" /></div> : <div><h2 className="text-lg font-bold">{selectedBank.title}</h2><p className="text-xs text-slate-500">{selectedBank.description || 'No description'}</p></div>}{editable && <div className="flex gap-2">{editing ? <><button onClick={saveDetails} className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded">Save</button><button onClick={() => setEditing(false)} className="p-1.5 border rounded"><X className="w-4 h-4" /></button></> : <><button onClick={() => { setEditValues({ title: selectedBank.title, description: selectedBank.description || '' }); setEditing(true); }} className="p-1.5 border rounded"><Pencil className="w-4 h-4" /></button><button onClick={removeBank} className="p-1.5 text-red-600 border rounded"><Trash2 className="w-4 h-4" /></button></>}</div>}</div>{editable ? <><QuestionForm bankId={selectedBank.id} onQuestionAdded={(question) => setDraftQuestions((items) => [...items, { ...question, client_id: crypto.randomUUID() }])} /><div className="p-4 bg-white border rounded-xl"><div className="flex justify-between"><div><h3 className="text-xs font-bold uppercase">Draft Questions ({draftQuestions.length})</h3><p className="text-xs text-slate-500">Review before saving.</p></div><button onClick={saveQuestions} disabled={savingDrafts || !draftQuestions.length} className="inline-flex items-center gap-2 px-4 py-2 text-xs text-white bg-emerald-600 rounded disabled:opacity-50"><Save className="w-4 h-4" /> Save All Questions</button></div>{draftQuestions.map((question) => <QuestionCard key={question.client_id} question={question} onDelete={() => setDraftQuestions((items) => items.filter((item) => item.client_id !== question.client_id))} />)}</div></> : <div className="p-3 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded">This official master template is read-only. Choose it when creating an assessment to clone its questions.</div>}<div className="space-y-3"><h3 className="text-xs font-bold uppercase">Existing Questions ({currentQuestions.length})</h3>{currentQuestions.length ? currentQuestions.map((question, index) => <QuestionCard key={question.id || index} question={question} onDelete={editable ? removeQuestion : undefined} />) : <div className="p-8 text-center text-sm text-slate-400 bg-white border border-dashed rounded-xl"><HelpCircle className="w-8 h-8 mx-auto mb-2" />No questions in this bank.</div>}</div></> : <div className="p-12 text-center text-slate-400 bg-white border rounded-xl">Select a question bank to begin.</div>}</section></div></div>;
 }

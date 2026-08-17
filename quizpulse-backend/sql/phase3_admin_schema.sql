@@ -6,6 +6,50 @@ BEGIN
 END
 GO
 
+CREATE OR ALTER PROCEDURE quiz.usp_createquestionbank
+    @name NVARCHAR(255), @description NVARCHAR(MAX) = NULL,
+    @created_by UNIQUEIDENTIFIER, @p_role NVARCHAR(50) = 'surveyor'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @bank TABLE (id UNIQUEIDENTIFIER, title NVARCHAR(255), description NVARCHAR(MAX), is_global BIT);
+    INSERT INTO quiz.question_banks (title, description, created_by, is_global)
+    OUTPUT inserted.id, inserted.title, inserted.description, inserted.is_global INTO @bank
+    VALUES (@name, @description, @created_by, CASE WHEN LOWER(@p_role) = 'admin' THEN 1 ELSE 0 END);
+    SELECT * FROM @bank;
+END
+GO
+
+CREATE OR ALTER PROCEDURE quiz.usp_updatequestionbank
+    @p_bank_id UNIQUEIDENTIFIER, @p_title NVARCHAR(255), @p_description NVARCHAR(MAX) = NULL,
+    @p_user_id UNIQUEIDENTIFIER, @p_role NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT EXISTS (SELECT 1 FROM quiz.question_banks WHERE id = @p_bank_id)
+    BEGIN SELECT CAST(NULL AS UNIQUEIDENTIFIER) AS id; RETURN; END;
+    IF LOWER(@p_role) <> 'admin' AND NOT EXISTS (SELECT 1 FROM quiz.question_banks WHERE id = @p_bank_id AND created_by = @p_user_id)
+        THROW 50031, 'You can only edit question banks you created.', 1;
+    UPDATE quiz.question_banks SET title = @p_title, description = @p_description WHERE id = @p_bank_id;
+    SELECT id, title, description, is_global FROM quiz.question_banks WHERE id = @p_bank_id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE quiz.usp_deletequestionbank
+    @p_bank_id UNIQUEIDENTIFIER, @p_user_id UNIQUEIDENTIFIER, @p_role NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT EXISTS (SELECT 1 FROM quiz.question_banks WHERE id = @p_bank_id)
+    BEGIN SELECT CAST(NULL AS UNIQUEIDENTIFIER) AS id; RETURN; END;
+    IF LOWER(@p_role) <> 'admin' AND NOT EXISTS (SELECT 1 FROM quiz.question_banks WHERE id = @p_bank_id AND created_by = @p_user_id)
+        THROW 50031, 'You can only delete question banks you created.', 1;
+    DELETE FROM quiz.questions WHERE bank_id = @p_bank_id;
+    DELETE FROM quiz.question_banks WHERE id = @p_bank_id;
+    SELECT @p_bank_id AS id;
+END
+GO
+
 IF COL_LENGTH('quiz.question_banks', 'category') IS NULL
 BEGIN
     ALTER TABLE quiz.question_banks ADD category NVARCHAR(100) NULL;

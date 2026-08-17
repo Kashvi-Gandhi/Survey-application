@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { getQuestionBanks } from '../services/bankService';
 import { createSurvey, importSelectedQuestions } from '../services/surveyService';
 import { PlusCircle, Database, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function CreateSurvey() {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [banks, setBanks] = useState([]);
@@ -154,7 +156,7 @@ export default function CreateSurvey() {
               ) : (
                 banks.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.is_master || b.is_global ? `[Master] ${b.title}` : b.title} ({getQuestionCount(b)} questions)
+                    {(b.is_master || b.is_global || String(b.created_by_role || '').toLowerCase() === 'admin') ? `[MASTER TEMPLATE] ${b.title}` : String(b.created_by) === String(user?.id) ? `[MY BANK] ${b.title}` : b.title} ({getQuestionCount(b)} questions)
                   </option>
                 ))
               )}

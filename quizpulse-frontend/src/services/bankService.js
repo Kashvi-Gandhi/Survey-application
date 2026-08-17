@@ -10,6 +10,16 @@ export const createQuestionBank = async (bankData) => {
   return response.data;
 };
 
+export const updateQuestionBank = async (bankId, bankData) => {
+  const response = await API.put(`/banks/${bankId}`, bankData);
+  return response.data;
+};
+
+export const deleteQuestionBank = async (bankId) => {
+  const response = await API.delete(`/banks/${bankId}`);
+  return response.data;
+};
+
 export const addQuestionToBank = async (questionData) => {
   // Map frontend display type names to PostgreSQL enum values
   const typeMap = {
@@ -34,5 +44,7 @@ export const addQuestionToBank = async (questionData) => {
 export default {
   getQuestionBanks,
   createQuestionBank,
+  updateQuestionBank,
+  deleteQuestionBank,
   addQuestionToBank
 };

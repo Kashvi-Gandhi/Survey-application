@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, BookOpen, ClipboardList, Database, FileText, RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { BarChart3, BookOpen, ClipboardList, FileText, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { getAdminMetrics, getAdminSurveyors, updateSurveyorStatus } from '../services/adminService';
 import SystemSurveys from '../components/admin/SystemSurveys';
-import MasterQuestionBanks from '../components/admin/MasterQuestionBanks';
 
 const tabs = [
   { id: 'overview', label: 'Overview & Surveyors' },
-  { id: 'surveys', label: 'System Surveys' },
-  { id: 'banks', label: 'Master Question Banks' }
+  { id: 'surveys', label: 'System Surveys' }
 ];
 
 const isActiveSurveyor = (surveyor) => surveyor.is_active === true || Number(surveyor.is_active) === 1;
@@ -99,7 +97,6 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'surveys' && <SystemSurveys />}
-      {activeTab === 'banks' && <MasterQuestionBanks />}
     </div>
   );
 }

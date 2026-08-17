@@ -85,6 +85,7 @@ const createBank = async (req, res) => {
       .input('name', sql.NVarChar(255), finalName)
       .input('description', sql.NVarChar(sql.MAX), description || '')
       .input('created_by', sql.NVarChar(100), userId)
+      .input('p_role', sql.NVarChar(50), req.user?.role || 'surveyor')
       .execute('quiz.usp_createquestionbank');
 
     // Admin-created banks are official templates by default.  Keep normal surveyor
@@ -121,7 +122,8 @@ const getBanks = async (req, res) => {
     const userId = req.user?.id || req.user?.user_id || null;
 
     const result = await pool.request()
-      .input('user_id', sql.NVarChar(100), userId)
+      .input('p_user_id', sql.UniqueIdentifier, userId)
+      .input('p_role', sql.NVarChar(50), req.user.role)
       .execute('quiz.usp_getuserquestionbanks');
 
     // Parse the nested JSON string for each bank's questions
@@ -145,4 +147,40 @@ const getBanks = async (req, res) => {
   }
 };
 
-module.exports = { createBank, getBanks };
+const updateBank = async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    if (!title?.trim()) return errorResponse(res, 400, 'Bank name is required');
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('p_bank_id', sql.UniqueIdentifier, req.params.id)
+      .input('p_title', sql.NVarChar(255), title.trim())
+      .input('p_description', sql.NVarChar(sql.MAX), description?.trim() || null)
+      .input('p_user_id', sql.UniqueIdentifier, req.user.id)
+      .input('p_role', sql.NVarChar(50), req.user.role)
+      .execute('quiz.usp_updatequestionbank');
+    if (!result.recordset?.[0]?.id) return errorResponse(res, 404, 'Question bank not found');
+    return successResponse(res, 200, 'Question bank updated successfully', result.recordset[0]);
+  } catch (err) {
+    if (err.number === 50031) return errorResponse(res, 403, err.message);
+    return errorResponse(res, 500, 'Failed to update question bank', err.message);
+  }
+};
+
+const deleteBank = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('p_bank_id', sql.UniqueIdentifier, req.params.id)
+      .input('p_user_id', sql.UniqueIdentifier, req.user.id)
+      .input('p_role', sql.NVarChar(50), req.user.role)
+      .execute('quiz.usp_deletequestionbank');
+    if (!result.recordset?.[0]?.id) return errorResponse(res, 404, 'Question bank not found');
+    return successResponse(res, 200, 'Question bank deleted successfully');
+  } catch (err) {
+    if (err.number === 50031) return errorResponse(res, 403, err.message);
+    return errorResponse(res, 500, 'Failed to delete question bank', err.message);
+  }
+};
+
+module.exports = { createBank, getBanks, updateBank, deleteBank };
